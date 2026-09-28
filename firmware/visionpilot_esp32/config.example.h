@@ -27,10 +27,6 @@
 #define PIN_MOTOR_IN1 26
 #define PIN_MOTOR_IN2 27
 #define PIN_SERVO 13
-#define PIN_BUMPER_L 32
-#define PIN_BUMPER_C 33
-#define PIN_BUMPER_R 14
-#define PIN_BATTERY 35       // 100k/47k divider from battery +, optional
 #define PIN_LED 2
 
 // ---- Motor tuning ----
@@ -45,10 +41,3 @@
 #define STEER_CENTER_US 1500 // trim so the car drives straight at steer=0
 #define STEER_RANGE_US 400   // +/- microseconds at full lock
 
-// ---- Bumpers (RAMPS endstop boards) ----
-// Mechanical endstop boards usually pull SIG LOW when pressed with NO wiring.
-// If the dashboard shows a bumper stuck "pressed", set this to false.
-#define BUMPER_ACTIVE_LOW true
-
-// ---- Battery divider ratio (R1+R2)/R2 ----
-#define BATTERY_DIVIDER 3.128f
