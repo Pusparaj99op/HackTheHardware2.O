@@ -209,6 +209,9 @@ void updateLed() {
 }
 
 bool ensureWifi() {
+#if USE_AP_MODE
+  return udpStarted;  // AP is always up after setup()
+#else
   if (WiFi.status() == WL_CONNECTED) {
     if (!udpStarted) {
       udp.begin(CMD_PORT);
@@ -224,6 +227,7 @@ bool ensureWifi() {
     Serial.println("WiFi lost -> stopped");
   }
   return false;
+#endif
 }
 
 void setup() {
