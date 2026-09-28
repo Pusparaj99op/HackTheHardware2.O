@@ -22,3 +22,7 @@ laptop/runs/
 Thumbs.db
 .DS_Store
 .claude/sessions/
+
+# Claude Code session artifacts in subfolders
+**/.claude/sessions/
+laptop/.claude/
