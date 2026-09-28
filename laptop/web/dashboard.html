@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VisionPilot Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="dash">
+    <section class="stack">
+      <div class="video-wrap">
+        <img id="video" alt="Live AI camera view" hidden>
+        <div class="placeholder" id="placeholder">
+          Waiting for the phone camera...<br>Open the phone URL printed in the laptop terminal.
+        </div>
+      </div>
+      <div class="panel stack">
+        <div class="status-line" id="status">starting...</div>
+        <div class="safety" id="safety"></div>
+        <div class="row" id="chips">
+          <span class="chip"><span class="dot" id="dot-server"></span>server</span>
+          <span class="chip"><span class="dot" id="dot-phone"></span>phone</span>
+          <span class="chip"><span class="dot" id="dot-car"></span><span id="car-text">car</span></span>
+          <span class="chip mono" id="battery">batt -</span>
+          <span class="chip mono" id="bumpers">bumpers -</span>
+          <span class="chip mono" id="cmd">cmd 0 / 0</span>
+          <span class="chip mono" id="vision">vision -</span>
+        </div>
+        <div class="muted" id="notice"></div>
+      </div>
+      <div class="panel">
+        <h2>Manual drive</h2>
+        <div class="row" style="justify-content: space-between">
+          <div class="muted">
+            Hold <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> (switches to Manual) or drag the pad.<br>
+            <kbd>Space</kbd> = KILL instantly. Click the video to pick a target.
+          </div>
+          <div class="pad" id="pad"><div class="knob" id="knob"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="stack">
+      <button class="kill" id="kill">KILLED - press to ARM</button>
+      <div class="panel">
+        <h2>Mode</h2>
+        <div class="modes" id="modes"></div>
+      </div>
+      <div class="panel stack">
+        <h2>Target</h2>
+        <select id="label"></select>
+        <div class="row" style="justify-content: space-between">
+          <span class="mono" id="target">none</span>
+          <button id="clear-target">Clear</button>
+        </div>
+      </div>
+      <div class="panel stack">
+        <h2>Speed cap <span class="mono" id="cap-value">40%</span></h2>
+        <input type="range" id="cap" min="0" max="100" step="5" value="40">
+        <button id="clear-bumper">Clear bumper lock</button>
+      </div>
+      <div class="panel stack">
+        <h2>Path memory</h2>
+        <canvas id="map" width="600" height="600"></canvas>
+        <div class="row muted mono" id="pose">x 0.00 y 0.00 heading 0</div>
+        <div class="row">
+          <input type="text" id="track-name" placeholder="track name" maxlength="40" style="flex: 1">
+          <button id="save">Save</button>
+          <button id="reset">Reset</button>
+        </div>
+        <div class="tracks" id="tracks"></div>
+      </div>
+    </aside>
+  </main>
+  <script type="module" src="/static/dashboard.js"></script>
+</body>
+</html>

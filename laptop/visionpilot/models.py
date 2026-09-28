@@ -86,6 +86,20 @@ class Pose:
 
 
 @dataclass(frozen=True)
+class Perception:
+    """What the vision worker saw in one camera frame."""
+
+    frame_time: float  # monotonic time the frame arrived from the phone
+    processed_time: float
+    width: int
+    height: int
+    detections: tuple[Detection, ...] = ()
+    openness: tuple[float, ...] | None = None
+    marker: MarkerPose | None = None
+    flow: float | None = None
+
+
+@dataclass(frozen=True)
 class Target:
     """What the car should go to. Exactly one field is normally set.
 
