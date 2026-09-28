@@ -1,0 +1,13 @@
+# Install torch with CUDA FIRST (see README):
+#   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+fastapi>=0.115
+uvicorn[standard]>=0.34
+numpy>=2.0
+opencv-python>=4.10
+ultralytics>=8.3
+lap>=0.5
+transformers>=4.45
+pillow>=10.0
+cryptography>=43.0
+pytest>=8.3
+pytest-cov>=5.0

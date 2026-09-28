@@ -1,0 +1,20 @@
+[project]
+name = "visionpilot"
+version = "0.1.0"
+description = "Vision-only self-driving RC car: phone camera -> laptop AI -> ESP32"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["visionpilot"]
+omit = [
+    "visionpilot/app.py",
+    "visionpilot/__main__.py",
+    "visionpilot/vision_worker.py",
+    "visionpilot/perception/detector.py",
+    "visionpilot/perception/depth_model.py",
+]

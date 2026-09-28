@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model weights downloaded at runtime
+*.pt
+*.onnx
+
+# Local secrets / generated
+firmware/visionpilot_esp32/config.h
+laptop/certs/
+laptop/data/tracks/*.json
+laptop/runs/
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+.claude/sessions/
