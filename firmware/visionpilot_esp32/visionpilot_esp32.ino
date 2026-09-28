@@ -29,6 +29,7 @@ static const int SERVO_BITS = 16;
 static const uint32_t SERVO_PERIOD_US = 1000000UL / SERVO_FREQ;
 static const int MOTOR_CH = 0;
 static const int SERVO_CH = 2;  // channel 2 uses a different timer than channel 0
+static const unsigned long SEQ_RESTART_GAP = 1000;
 
 WiFiUDP udp;
 bool udpStarted = false;
@@ -148,6 +149,10 @@ void handlePacket(const char* msg) {
   int throttle = 0;
   int steer = 0;
   if (sscanf(msg, "D,%lu,%d,%d", &seq, &throttle, &steer) != 3) return;
+  // Drop late (out-of-order) packets while the link is live. After a watchdog gap
+  // (e.g. the laptop app restarted and its seq began again at 1) accept anything.
+  const bool stale = !watchdogTripped() && seq <= lastSeq && lastSeq - seq < SEQ_RESTART_GAP;
+  if (stale) return;
   lastSeq = seq;
   lastDriveMs = millis();
   applyDrive(constrain(throttle, -100, 100), constrain(steer, -100, 100));

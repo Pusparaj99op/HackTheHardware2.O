@@ -131,7 +131,10 @@ window.addEventListener("keydown", (e) => {
   if ("wasd".includes(k) && k.length === 1) keys.add(k);
 });
 window.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
-window.addEventListener("blur", () => keys.clear());
+window.addEventListener("blur", () => {
+  keys.clear();
+  releasePad(); // never keep driving from a drag the window can no longer see
+});
 
 setInterval(() => {
   let drive = pad;
@@ -166,6 +169,17 @@ function movePad(event) {
 }
 padEl.addEventListener("pointerdown", (e) => { padEl.setPointerCapture(e.pointerId); movePad(e); });
 padEl.addEventListener("pointermove", (e) => { if (pad) movePad(e); });
-const releasePad = () => { pad = null; knob.style.left = "56px"; knob.style.top = "56px"; };
+function releasePad() {
+  pad = null;
+  knob.style.left = "56px";
+  knob.style.top = "56px";
+}
 padEl.addEventListener("pointerup", releasePad);
 padEl.addEventListener("pointercancel", releasePad);
+padEl.addEventListener("lostpointercapture", releasePad);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    keys.clear();
+    releasePad();
+  }
+});
