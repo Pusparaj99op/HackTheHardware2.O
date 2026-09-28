@@ -2,7 +2,15 @@
 // config.h is gitignored so credentials never get committed.
 #pragma once
 
-// ---- Wi-Fi (Windows Mobile Hotspot, 2.4 GHz band!) ----
+// ---- Wi-Fi mode ----
+// WIFI_MODE_AP 1  → ESP32 creates its own access point (phone control, no laptop needed)
+// WIFI_MODE_AP 0  → ESP32 joins your hotspot (laptop mode)
+#define USE_AP_MODE 1
+#define AP_SSID "VisionPilot"
+#define AP_PASS "vp123456"
+// In AP mode the car IP is always 192.168.4.1; phone connects to the AP above.
+
+// ---- Wi-Fi (used only when WIFI_MODE_AP 0 — Windows Mobile Hotspot, 2.4 GHz band!) ----
 #define WIFI_SSID "YOUR_HOTSPOT_NAME"
 #define WIFI_PASS "YOUR_HOTSPOT_PASSWORD"
 

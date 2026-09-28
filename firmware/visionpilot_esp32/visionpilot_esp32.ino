@@ -239,11 +239,20 @@ void setup() {
   pwmSetup(PIN_SERVO, SERVO_CH, SERVO_FREQ, SERVO_BITS);
   stopAll();
 
+#if USE_AP_MODE
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASS);
+  udp.begin(CMD_PORT);
+  udpStarted = true;
+  Serial.printf("VisionPilot AP mode: SSID=%s  IP=%s  port=%d\n",
+                AP_SSID, WiFi.softAPIP().toString().c_str(), CMD_PORT);
+#else
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);  // modem sleep adds 100ms+ latency spikes
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.println("VisionPilot car booting, connecting WiFi...");
+#endif
 }
 
 void loop() {
