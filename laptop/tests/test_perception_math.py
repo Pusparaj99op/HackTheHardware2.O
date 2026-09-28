@@ -50,6 +50,27 @@ def test_marker_pose_heading_points_to_top_edge():
     assert pose.size == pytest.approx(0.1)
 
 
+def test_overlay_draws_without_touching_the_input_frame():
+    from visionpilot.models import Detection, MarkerPose, Perception
+    from visionpilot.perception.overlay import OverlayInfo, draw_overlay
+
+    frame = np.zeros((360, 640, 3), np.uint8)
+    seen = Perception(
+        frame_time=0.0,
+        processed_time=0.0,
+        width=640,
+        height=360,
+        detections=(Detection(3, "bottle", 0.9, 0.4, 0.4, 0.6, 0.8),),
+        openness=(1.0, 0.5, 0.0, 0.5, 1.0),
+        marker=MarkerPose(0.5, 0.5, 0.0, 0.1),
+    )
+    info = OverlayInfo(mode="follow", status="following", safety="obstacle", focus_id=3, target_point=(0.2, 0.2))
+    out = draw_overlay(frame, seen, info, depth_vis=np.full((90, 160, 3), 128, np.uint8))
+    assert out.shape == frame.shape
+    assert out.any()
+    assert not frame.any()
+
+
 def test_marker_rotated_to_face_right():
     # top edge on the right side -> car points right (heading 0)
     corners = np.array([[110, 90], [110, 110], [90, 110], [90, 90]], dtype=np.float32)
