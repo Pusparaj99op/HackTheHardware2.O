@@ -54,7 +54,8 @@ class ControlScreen extends StatefulWidget {
 }
 
 class _ControlScreenState extends State<ControlScreen> {
-  static const _overridePeriod = Duration(milliseconds: 50); // 20 Hz like the car loop
+  static const _overridePeriod =
+      Duration(milliseconds: 50); // 20 Hz like the car loop
 
   Telemetry? _telem;
   int _throttle = 0;
@@ -101,7 +102,9 @@ class _ControlScreenState extends State<ControlScreen> {
 
   /// While vision drives, any stick input is sent to the laptop as an override.
   void _sendOverride(Timer _) {
-    if (_throttle == 0 && _steer == 0) return; // released: laptop resumes vision after 1 s
+    if (_throttle == 0 && _steer == 0) {
+      return; // released: laptop resumes vision after 1 s
+    }
     _link?.send({'type': 'manual', 'throttle': _throttle, 'steer': _steer});
   }
 
@@ -121,7 +124,8 @@ class _ControlScreenState extends State<ControlScreen> {
     }
     setState(() => _connecting = false);
     if (link == null) {
-      _snack('Laptop not found. Join the laptop to the VisionPilot Wi-Fi, start the server, '
+      _snack(
+          'Laptop not found. Join the laptop to the VisionPilot Wi-Fi, start the server, '
           'or set its IP in Settings.');
       return;
     }
@@ -135,7 +139,8 @@ class _ControlScreenState extends State<ControlScreen> {
       ..add(link.frames.listen((f) => setState(() => _frame = f)))
       ..add(link.errors.listen(_snack));
     link.connected.addListener(_onLinkChanged);
-    widget.socket.paused = true; // hand the car over: the app stops sending drive packets
+    widget.socket.paused =
+        true; // hand the car over: the app stops sending drive packets
     link.send({'type': 'engage'});
     _overrideTimer = Timer.periodic(_overridePeriod, _sendOverride);
     setState(() => _vision = true);
@@ -161,7 +166,9 @@ class _ControlScreenState extends State<ControlScreen> {
   void _onLinkChanged() {
     final link = _link;
     if (link != null && !link.connected.value && _vision) {
-      _stopVision(sendRelease: false, reason: 'Laptop lost - back to direct joystick control');
+      _stopVision(
+          sendRelease: false,
+          reason: 'Laptop lost - back to direct joystick control');
     }
   }
 
@@ -194,7 +201,8 @@ class _ControlScreenState extends State<ControlScreen> {
   }
 
   void _kill() {
-    widget.socket.sendKill(); // always straight to the car, even if the laptop hangs
+    widget.socket
+        .sendKill(); // always straight to the car, even if the laptop hangs
     if (_vision) {
       _link?.send({'type': 'kill'});
       _stopVision(sendRelease: false);
@@ -250,9 +258,11 @@ class _ControlScreenState extends State<ControlScreen> {
           ? const SizedBox(
               width: 14,
               height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white),
             )
-          : Icon(on ? Icons.visibility : Icons.visibility_outlined, color: Colors.white, size: 16),
+          : Icon(on ? Icons.visibility : Icons.visibility_outlined,
+              color: Colors.white, size: 16),
     );
   }
 
@@ -295,8 +305,12 @@ class _ControlScreenState extends State<ControlScreen> {
         onOpenSettings: widget.onOpenSettings,
         actions: [
           _visionButton(),
-          BarButton(label: 'KILL', color: Colors.red.shade700, onPressed: _kill),
-          BarButton(label: 'CLEAR', color: Colors.blueGrey, onPressed: widget.socket.sendClear),
+          BarButton(
+              label: 'KILL', color: Colors.red.shade700, onPressed: _kill),
+          BarButton(
+              label: 'CLEAR',
+              color: Colors.blueGrey,
+              onPressed: widget.socket.sendClear),
         ],
       ),
       body: Column(
@@ -365,7 +379,8 @@ class _ValueChip extends StatelessWidget {
     return Column(children: [
       Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11)),
       Text('${value > 0 ? "+" : ""}$value',
-          style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.bold)),
+          style: TextStyle(
+              color: color, fontSize: 22, fontWeight: FontWeight.bold)),
     ]);
   }
 }

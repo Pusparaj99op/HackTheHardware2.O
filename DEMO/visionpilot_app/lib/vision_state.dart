@@ -9,7 +9,11 @@ class Detection {
   final double conf;
   final List<double> box; // x1, y1, x2, y2
 
-  const Detection({required this.id, required this.label, required this.conf, required this.box});
+  const Detection(
+      {required this.id,
+      required this.label,
+      required this.conf,
+      required this.box});
 
   static Detection? fromJson(Object? raw) {
     if (raw is! Map) return null;
@@ -45,7 +49,14 @@ class VisionState {
 
   const VisionState({
     this.mode = 'manual',
-    this.modes = const ['manual', 'assist', 'follow', 'explore', 'replay', 'handheld'],
+    this.modes = const [
+      'manual',
+      'assist',
+      'follow',
+      'explore',
+      'replay',
+      'handheld'
+    ],
     this.engaged = false,
     this.status = '',
     this.safety,
@@ -84,8 +95,11 @@ class VisionState {
       focus: j['focus'] is int ? j['focus'] as int : null,
       cameraConnected: j['phone_connected'] == true,
       targetPoint: _point(target['point']),
-      markerPosition: j['marker'] is Map ? _point([(j['marker'] as Map)['x'], (j['marker'] as Map)['y']]) : null,
-      markerHeading: j['marker'] is Map ? _toDouble((j['marker'] as Map)['heading']) : 0,
+      markerPosition: j['marker'] is Map
+          ? _point([(j['marker'] as Map)['x'], (j['marker'] as Map)['y']])
+          : null,
+      markerHeading:
+          j['marker'] is Map ? _toDouble((j['marker'] as Map)['heading']) : 0,
     );
   }
 
@@ -112,7 +126,9 @@ class VisionState {
 String? tryParseError(String text) {
   try {
     final decoded = jsonDecode(text);
-    if (decoded is Map && decoded['type'] == 'error') return decoded['message']?.toString();
+    if (decoded is Map && decoded['type'] == 'error') {
+      return decoded['message']?.toString();
+    }
   } on FormatException {
     return null;
   }
@@ -158,5 +174,6 @@ Offset? _point(Object? raw) =>
         ? Offset((raw[0] as num).toDouble(), (raw[1] as num).toDouble())
         : null;
 
-List<String> _strings(Object? raw, List<String> fallback) =>
-    raw is List ? raw.map((e) => e.toString()).toList(growable: false) : fallback;
+List<String> _strings(Object? raw, List<String> fallback) => raw is List
+    ? raw.map((e) => e.toString()).toList(growable: false)
+    : fallback;

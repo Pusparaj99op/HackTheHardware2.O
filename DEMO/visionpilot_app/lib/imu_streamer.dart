@@ -38,9 +38,11 @@ class ImuStreamer {
   ImuStreamer(this.send);
 
   void start() {
-    _accelSub = accelerometerEventStream(samplingPeriod: SensorInterval.gameInterval)
-        .listen((e) => _accel = [e.x, e.y, e.z], onError: (_) {});
-    _gyroSub = gyroscopeEventStream(samplingPeriod: SensorInterval.gameInterval).listen(
+    _accelSub =
+        accelerometerEventStream(samplingPeriod: SensorInterval.gameInterval)
+            .listen((e) => _accel = [e.x, e.y, e.z], onError: (_) {});
+    _gyroSub = gyroscopeEventStream(samplingPeriod: SensorInterval.gameInterval)
+        .listen(
       (e) => _buffer.add(buildImuSample(
         tMs: e.timestamp.microsecondsSinceEpoch / 1000,
         gyroX: e.x,
@@ -57,7 +59,8 @@ class ImuStreamer {
 
   void _send() {
     if (_buffer.isEmpty) return;
-    final start = _buffer.length > maxImuBatch ? _buffer.length - maxImuBatch : 0;
+    final start =
+        _buffer.length > maxImuBatch ? _buffer.length - maxImuBatch : 0;
     final batch = _buffer.sublist(start);
     _buffer.clear();
     send({'type': 'imu', 'samples': batch});

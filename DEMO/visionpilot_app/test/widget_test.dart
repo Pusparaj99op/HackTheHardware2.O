@@ -39,16 +39,20 @@ class FakeLink implements VisionLink {
 
 /// Lets the async VISION toggle finish (connector future + rebuild).
 Future<void> settle(WidgetTester tester) async {
-  await tester.pump();
-  await tester.pump();
+  for (var i = 0; i < 4; i++) {
+    await tester
+        .pump(); // prefs + orientation lock + connector futures, then rebuild
+  }
 }
 
-Future<void> pumpScreen(WidgetTester tester, CarSocket socket, VisionConnector connect) async {
+Future<void> pumpScreen(
+    WidgetTester tester, CarSocket socket, VisionConnector connect) async {
   tester.view.physicalSize = const Size(2400, 1080);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(MaterialApp(
-    home: ControlScreen(socket: socket, carIp: '192.168.4.1', connectVision: connect),
+    home: ControlScreen(
+        socket: socket, carIp: '192.168.4.1', connectVision: connect),
   ));
 }
 
@@ -71,7 +75,9 @@ void main() {
     expect(link.disposed, isTrue);
   });
 
-  testWidgets('KILL during vision tells the laptop and returns joystick control', (tester) async {
+  testWidgets(
+      'KILL during vision tells the laptop and returns joystick control',
+      (tester) async {
     final socket = CarSocket();
     final link = FakeLink();
     await pumpScreen(tester, socket, ({bool frames = true}) async => link);
@@ -98,7 +104,8 @@ void main() {
     expect(find.textContaining('Laptop lost'), findsOneWidget);
   });
 
-  testWidgets('missing laptop shows a hint and keeps direct control', (tester) async {
+  testWidgets('missing laptop shows a hint and keeps direct control',
+      (tester) async {
     final socket = CarSocket();
     await pumpScreen(tester, socket, ({bool frames = true}) async => null);
     await tester.tap(find.byKey(const Key('vision-toggle')));
@@ -107,7 +114,8 @@ void main() {
     expect(socket.paused, isFalse);
   });
 
-  testWidgets('top bar is one thin row with VISION, KILL and settings', (tester) async {
+  testWidgets('top bar is one thin row with VISION, KILL and settings',
+      (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: ControlScreen(
         socket: CarSocket(),
@@ -116,7 +124,8 @@ void main() {
         onOpenSettings: () {},
       ),
     ));
-    expect(tester.getSize(find.byKey(const Key('top-bar'))).height, lessThanOrEqualTo(44));
+    expect(tester.getSize(find.byKey(const Key('top-bar'))).height,
+        lessThanOrEqualTo(44));
     expect(find.byKey(const Key('vision-toggle')), findsOneWidget);
     expect(find.text('KILL'), findsOneWidget);
     expect(find.byKey(const Key('settings-button')), findsOneWidget);
@@ -157,7 +166,8 @@ void main() {
     expect(find.byType(ControlScreen), findsOneWidget);
   });
 
-  testWidgets('holding a joystick during vision sends a manual override', (tester) async {
+  testWidgets('holding a joystick during vision sends a manual override',
+      (tester) async {
     final socket = CarSocket();
     final link = FakeLink();
     await pumpScreen(tester, socket, ({bool frames = true}) async => link);

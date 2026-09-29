@@ -49,7 +49,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _searching = false);
     if (found == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No laptop answered. Is it on the VisionPilot Wi-Fi with the server running?')));
+          content: Text(
+              'No laptop answered. Is it on the VisionPilot Wi-Fi with the server running?')));
       return;
     }
     _laptopCtrl.text = found.ip;
@@ -57,8 +58,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setString('laptop_ip', found.ip);
     await prefs.setInt('laptop_port', found.port);
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Laptop found at ${found.ip}:${found.port}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Laptop found at ${found.ip}:${found.port}')));
     }
   }
 
@@ -84,13 +85,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setInt('cmd_port', int.tryParse(_portCtrl.text) ?? 4210);
     final laptop = _laptopCtrl.text.trim();
     if (laptop.isEmpty || InternetAddress.tryParse(laptop) == null) {
-      await prefs.remove('laptop_ip'); // empty/invalid -> auto-discover when VISION is pressed
+      await prefs.remove(
+          'laptop_ip'); // empty/invalid -> auto-discover when VISION is pressed
     } else {
       await prefs.setString('laptop_ip', laptop);
     }
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Saved — restart app to apply')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved — restart app to apply')));
     }
   }
 
@@ -108,13 +110,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('This phone is the...', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const Text('This phone is the...',
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 6),
             SegmentedButton<AppRole>(
               key: const Key('role-picker'),
               segments: [
                 for (final role in AppRole.values)
-                  ButtonSegment(value: role, label: Text(role.label), icon: Icon(role.icon)),
+                  ButtonSegment(
+                      value: role,
+                      label: Text(role.label),
+                      icon: Icon(role.icon)),
               ],
               selected: {_role},
               onSelectionChanged: (selection) => _setRole(selection.first),
@@ -128,14 +134,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              title: const Text('Rotate camera 180°', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              title: const Text('Rotate camera 180°',
+                  style: TextStyle(color: Colors.white70, fontSize: 13)),
               subtitle: const Text('Use if the AI video is upside down',
                   style: TextStyle(color: Colors.white38, fontSize: 11)),
               value: _rotate180,
               onChanged: _setRotate,
             ),
             const SizedBox(height: 12),
-            const Text('Car IP address', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const Text('Car IP address',
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 6),
             TextField(
               controller: _ipCtrl,
@@ -144,12 +152,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: InputDecoration(
                 hintText: '192.168.4.1',
                 hintStyle: const TextStyle(color: Colors.white38),
-                filled: true, fillColor: Colors.white10,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                filled: true,
+                fillColor: Colors.white10,
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Command port', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const Text('Command port',
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 6),
             TextField(
               controller: _portCtrl,
@@ -158,8 +169,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               decoration: InputDecoration(
                 hintText: '4210',
                 hintStyle: const TextStyle(color: Colors.white38),
-                filled: true, fillColor: Colors.white10,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                filled: true,
+                fillColor: Colors.white10,
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
             const SizedBox(height: 16),
@@ -175,8 +188,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: InputDecoration(
                     hintText: 'e.g. 192.168.4.2',
                     hintStyle: const TextStyle(color: Colors.white38),
-                    filled: true, fillColor: Colors.white10,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    filled: true,
+                    fillColor: Colors.white10,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
               ),
@@ -184,7 +199,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ElevatedButton.icon(
                 onPressed: _searching ? null : _findLaptop,
                 icon: _searching
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.wifi_find),
                 label: const Text('Find laptop'),
               ),
@@ -195,7 +213,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '  WiFi name: VisionPilot\n'
               '  Password:  vp123456\n'
               '  Car IP:    192.168.4.1',
-              style: TextStyle(color: Colors.white38, fontSize: 12, height: 1.7),
+              style:
+                  TextStyle(color: Colors.white38, fontSize: 12, height: 1.7),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -205,7 +224,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     backgroundColor: Colors.greenAccent.shade700,
                     padding: const EdgeInsets.symmetric(vertical: 14)),
                 onPressed: _save,
-                child: const Text('Save', style: TextStyle(color: Colors.black)),
+                child:
+                    const Text('Save', style: TextStyle(color: Colors.black)),
               ),
             ),
           ],

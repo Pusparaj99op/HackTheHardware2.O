@@ -15,7 +15,8 @@ class DetectionPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final s = state;
     if (s == null) return;
-    const labelStyle = TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.w600);
+    const labelStyle = TextStyle(
+        color: Colors.black, fontSize: 12, fontWeight: FontWeight.w600);
     for (final d in s.detections) {
       final focus = d.id != null && d.id == s.focus;
       final color = focus ? Colors.greenAccent : Colors.lightBlueAccent;
@@ -56,7 +57,8 @@ class DetectionPainter extends CustomPainter {
     final marker = s.markerPosition;
     if (marker != null) {
       final c = Offset(marker.dx * size.width, marker.dy * size.height);
-      final tip = c + Offset(math.cos(s.markerHeading), math.sin(s.markerHeading)) * 50;
+      final tip =
+          c + Offset(math.cos(s.markerHeading), math.sin(s.markerHeading)) * 50;
       canvas.drawLine(
         c,
         tip,
@@ -93,14 +95,18 @@ class LocalCameraView extends StatelessWidget {
       return Container(
         color: Colors.black,
         alignment: Alignment.center,
-        child: Text(placeholder, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        child: Text(placeholder,
+            style: const TextStyle(color: Colors.white54, fontSize: 12)),
       );
     }
+    // The sensor aspect is landscape (w > h); an upright portrait preview is the inverse.
+    final portrait = MediaQuery.orientationOf(context) == Orientation.portrait;
     return ColoredBox(
       color: Colors.black,
       child: Center(
         child: AspectRatio(
-          aspectRatio: cam.value.aspectRatio, // app is landscape-only
+          aspectRatio:
+              portrait ? 1 / cam.value.aspectRatio : cam.value.aspectRatio,
           child: LayoutBuilder(
             builder: (context, box) => GestureDetector(
               onTapUp: (tap) => onTap(Offset(

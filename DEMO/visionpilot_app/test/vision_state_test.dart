@@ -16,8 +16,18 @@ const _sample = {
   'link': {'ok': true},
   'vision': {'status': 'ready | 15 fps'},
   'detections': [
-    {'id': 5, 'label': 'bottle', 'conf': 0.9, 'box': [0.4, 0.4, 0.6, 0.8]},
-    {'id': null, 'label': 'person', 'conf': 0.5, 'box': [0.0, 0.0, 1.0]}, // malformed box
+    {
+      'id': 5,
+      'label': 'bottle',
+      'conf': 0.9,
+      'box': [0.4, 0.4, 0.6, 0.8]
+    },
+    {
+      'id': null,
+      'label': 'person',
+      'conf': 0.5,
+      'box': [0.0, 0.0, 1.0]
+    }, // malformed box
   ],
   'labels': ['bottle', 'person'],
   'target': {'track_id': 5, 'label': 'bottle', 'point': null},
@@ -56,7 +66,8 @@ void main() {
     });
 
     test('extracts error messages', () {
-      expect(tryParseError('{"type":"error","message":"unknown mode"}'), 'unknown mode');
+      expect(tryParseError('{"type":"error","message":"unknown mode"}'),
+          'unknown mode');
       expect(tryParseError('{"type":"state"}'), isNull);
       expect(tryParseError('garbage'), isNull);
     });
@@ -67,9 +78,11 @@ void main() {
       // 16:9 image in a square box -> bars top and bottom
       const box = Size(160, 160);
       const image = Size(160, 90);
-      expect(containTap(box, image, const Offset(80, 80)), const Offset(0.5, 0.5));
+      expect(
+          containTap(box, image, const Offset(80, 80)), const Offset(0.5, 0.5));
       expect(containTap(box, image, const Offset(0, 35)), const Offset(0, 0));
-      expect(containTap(box, image, const Offset(80, 10)), isNull); // on the black bar
+      expect(containTap(box, image, const Offset(80, 10)),
+          isNull); // on the black bar
     });
   });
 
@@ -78,7 +91,8 @@ void main() {
       final bytes = Uint8List.fromList([
         0xFF, 0xD8, // SOI
         0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00, // APP0 (length 4)
-        0xFF, 0xC0, 0x00, 0x11, 0x08, 0x01, 0x68, 0x02, 0x80, 0x03, // SOF0: 360 x 640
+        0xFF, 0xC0, 0x00, 0x11, 0x08, 0x01, 0x68, 0x02, 0x80,
+        0x03, // SOF0: 360 x 640
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       ]);
       expect(jpegSize(bytes), const Size(640, 360));
@@ -91,13 +105,17 @@ void main() {
 
   group('CarSocket.packetFor', () {
     test('drives normally when not paused', () {
-      expect(CarSocket.packetFor(paused: false, tick: 3, seq: 7, throttle: 40, steer: -20), 'D,7,40,-20');
+      expect(
+          CarSocket.packetFor(
+              paused: false, tick: 3, seq: 7, throttle: 40, steer: -20),
+          'D,7,40,-20');
     });
 
     test('only pings at 2 Hz while vision owns the car', () {
       final packets = [
         for (var t = 1; t <= 20; t++)
-          CarSocket.packetFor(paused: true, tick: t, seq: t, throttle: 90, steer: 0),
+          CarSocket.packetFor(
+              paused: true, tick: t, seq: t, throttle: 90, steer: 0),
       ];
       expect(packets.whereType<String>(), ['P', 'P']);
     });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,8 +12,6 @@ import 'settings_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // One fixed landscape so camera frames from the back sensor arrive upright.
-  SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft]);
   runApp(const VisionPilotApp());
 }
 
@@ -29,7 +29,8 @@ class VisionPilotApp extends StatelessWidget {
   }
 }
 
-typedef CarSocketFactory = Future<CarSocket> Function(String carIp, int cmdPort);
+typedef CarSocketFactory = Future<CarSocket> Function(
+    String carIp, int cmdPort);
 typedef CameraScreenBuilder = Widget Function(VoidCallback openSettings);
 
 Future<CarSocket> startCarSocket(String carIp, int cmdPort) async {
@@ -38,7 +39,8 @@ Future<CarSocket> startCarSocket(String carIp, int cmdPort) async {
   return socket;
 }
 
-Widget buildCameraScreen(VoidCallback openSettings) => CameraScreen(onOpenSettings: openSettings);
+Widget buildCameraScreen(VoidCallback openSettings) =>
+    CameraScreen(onOpenSettings: openSettings);
 
 /// Picks the screen for this phone's role. Only roles that drive the car start
 /// the 20 Hz UDP drive loop - the Camera role must never send drive packets.
@@ -60,6 +62,16 @@ class _RoleShellState extends State<RoleShell> {
   AppRole? _role;
   CarSocket? _socket;
   String _carIp = '192.168.4.1';
+  int _cmdPort = 4210;
+
+  /// One fixed orientation per role, so camera frames can be turned upright:
+  /// the Camera role is a vertical phone, the controller roles hold it sideways.
+  static Future<void> _lockOrientation(AppRole role) =>
+      SystemChrome.setPreferredOrientations(
+        role == AppRole.camera
+            ? [DeviceOrientation.portraitUp]
+            : [DeviceOrientation.landscapeLeft],
+      );
 
   @override
   void initState() {
@@ -76,19 +88,27 @@ class _RoleShellState extends State<RoleShell> {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final role = AppRole.parse(prefs.getString(AppRole.prefsKey));
-    _carIp = prefs.getString('car_ip') ?? '192.168.4.1';
+    final carIp = prefs.getString('car_ip') ?? '192.168.4.1';
     final port = prefs.getInt('cmd_port') ?? 4210;
+    final carChanged = carIp != _carIp || port != _cmdPort;
+    _carIp = carIp;
+    _cmdPort = port;
+    unawaited(
+        _lockOrientation(role)); // never block the UI on the platform call
+    if (_socket != null && (!role.drivesCar || carChanged)) {
+      _socket
+          ?.dispose(); // stop the drive loop before becoming a camera / re-targeting
+      _socket = null;
+    }
     if (role.drivesCar && _socket == null) {
       _socket = await widget.carSocketFactory(_carIp, port);
-    } else if (!role.drivesCar && _socket != null) {
-      _socket?.dispose(); // stop the drive loop before becoming a camera
-      _socket = null;
     }
     if (mounted) setState(() => _role = role);
   }
 
   Future<void> _openSettings() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
     await _load(); // the role may have changed
   }
 
@@ -99,14 +119,15 @@ class _RoleShellState extends State<RoleShell> {
     if (role == null || (role.drivesCar && socket == null)) {
       return const Scaffold(
         backgroundColor: Color(0xFF1A1A2E),
-        body: Center(child: CircularProgressIndicator(color: Colors.greenAccent)),
+        body:
+            Center(child: CircularProgressIndicator(color: Colors.greenAccent)),
       );
     }
     if (!role.drivesCar || socket == null) {
       return widget.cameraScreenBuilder(_openSettings);
     }
     return ControlScreen(
-      key: ValueKey(role),
+      key: ValueKey((role, socket)), // new drive loop -> fresh screen
       socket: socket,
       carIp: _carIp,
       role: role,

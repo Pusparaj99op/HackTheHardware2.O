@@ -22,7 +22,8 @@ Uint8List splitFrame(int w, int h) {
 void main() {
   group('encodeNv21Frame', () {
     test('produces a JPEG of the frame size', () {
-      final jpeg = encodeNv21Frame(Nv21Frame(width: 64, height: 48, bytes: splitFrame(64, 48)));
+      final jpeg = encodeNv21Frame(
+          Nv21Frame(width: 64, height: 48, bytes: splitFrame(64, 48)));
       final decoded = img.decodeJpg(jpeg)!;
       expect(decoded.width, 64);
       expect(decoded.height, 48);
@@ -31,7 +32,8 @@ void main() {
     });
 
     test('downscales wide frames to the target width, keeping aspect', () {
-      final jpeg = encodeNv21Frame(Nv21Frame(width: 160, height: 120, bytes: splitFrame(160, 120), targetWidth: 80));
+      final jpeg = encodeNv21Frame(Nv21Frame(
+          width: 160, height: 120, bytes: splitFrame(160, 120), maxSide: 80));
       final decoded = img.decodeJpg(jpeg)!;
       expect(decoded.width, 80);
       expect(decoded.height, 60);
@@ -39,23 +41,107 @@ void main() {
 
     test('rotate180 swaps the dark and bright halves', () {
       final jpeg = encodeNv21Frame(
-        Nv21Frame(width: 64, height: 48, bytes: splitFrame(64, 48), rotate180: true),
+        Nv21Frame(
+            width: 64,
+            height: 48,
+            bytes: splitFrame(64, 48),
+            rotationDegrees: 180),
       );
       final decoded = img.decodeJpg(jpeg)!;
       expect(decoded.getPixel(4, 24).r, greaterThan(170));
       expect(decoded.getPixel(60, 24).r, lessThan(80));
     });
 
+    test(
+        '90 degrees turns the frame upright for portrait (left half ends on top)',
+        () {
+      final jpeg = encodeNv21Frame(
+        Nv21Frame(
+            width: 64,
+            height: 48,
+            bytes: splitFrame(64, 48),
+            rotationDegrees: 90),
+      );
+      final decoded = img.decodeJpg(jpeg)!;
+      expect(decoded.width, 48);
+      expect(decoded.height, 64);
+      expect(decoded.getPixel(24, 4).r, lessThan(80));
+      expect(decoded.getPixel(24, 60).r, greaterThan(170));
+    });
+
+    test('270 degrees puts the left half at the bottom', () {
+      final jpeg = encodeNv21Frame(
+        Nv21Frame(
+            width: 64,
+            height: 48,
+            bytes: splitFrame(64, 48),
+            rotationDegrees: 270),
+      );
+      final decoded = img.decodeJpg(jpeg)!;
+      expect(decoded.getPixel(24, 4).r, greaterThan(170));
+      expect(decoded.getPixel(24, 60).r, lessThan(80));
+    });
+
+    test('mirror flips left and right (front camera selfie view)', () {
+      final jpeg = encodeNv21Frame(
+        Nv21Frame(
+            width: 64, height: 48, bytes: splitFrame(64, 48), mirror: true),
+      );
+      final decoded = img.decodeJpg(jpeg)!;
+      expect(decoded.getPixel(4, 24).r, greaterThan(170));
+      expect(decoded.getPixel(60, 24).r, lessThan(80));
+    });
+
+    test('portrait frames are limited by their long side', () {
+      final jpeg = encodeNv21Frame(
+        Nv21Frame(
+            width: 160,
+            height: 120,
+            bytes: splitFrame(160, 120),
+            maxSide: 80,
+            rotationDegrees: 90),
+      );
+      final decoded = img.decodeJpg(jpeg)!;
+      expect(decoded.width, 60);
+      expect(decoded.height, 80);
+    });
+
     test('rejects a truncated buffer', () {
       expect(
-        () => encodeNv21Frame(Nv21Frame(width: 64, height: 48, bytes: Uint8List(10))),
+        () => encodeNv21Frame(
+            Nv21Frame(width: 64, height: 48, bytes: Uint8List(10))),
         throwsArgumentError,
       );
     });
   });
 
+  group('uprightRotation', () {
+    test(
+        'back sensor (90) needs a quarter turn in portrait and none in landscape',
+        () {
+      expect(
+          uprightRotation(
+              sensorOrientation: 90, deviceRotation: 0, front: false),
+          90);
+      expect(
+          uprightRotation(
+              sensorOrientation: 90, deviceRotation: 90, front: false),
+          0);
+    });
+
+    test('front sensor (270) needs the opposite quarter turn in portrait (S24)',
+        () {
+      expect(
+          uprightRotation(
+              sensorOrientation: 270, deviceRotation: 0, front: true),
+          90);
+    });
+  });
+
   group('buildImuSample', () {
-    test('matches the browser devicemotion format (alpha=z, beta=x, gamma=y, deg/s)', () {
+    test(
+        'matches the browser devicemotion format (alpha=z, beta=x, gamma=y, deg/s)',
+        () {
       final s = buildImuSample(
         tMs: 1500,
         gyroX: math.pi,

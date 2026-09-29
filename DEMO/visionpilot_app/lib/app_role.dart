@@ -18,8 +18,8 @@ enum AppRole {
 
   static const prefsKey = 'role';
 
-  static AppRole parse(String? name) =>
-      AppRole.values.firstWhere((r) => r.name == name, orElse: () => AppRole.controller);
+  static AppRole parse(String? name) => AppRole.values
+      .firstWhere((r) => r.name == name, orElse: () => AppRole.controller);
 
   /// Whether this role runs the 20 Hz UDP drive loop to the car.
   bool get drivesCar => this != AppRole.camera;

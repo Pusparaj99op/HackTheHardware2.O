@@ -39,15 +39,22 @@ class CompactTopBar extends StatelessWidget implements PreferredSizeWidget {
               Container(
                 width: 9,
                 height: 9,
-                decoration: BoxDecoration(color: stateColor, shape: BoxShape.circle),
+                decoration:
+                    BoxDecoration(color: stateColor, shape: BoxShape.circle),
               ),
               const SizedBox(width: 6),
               Text(stateLabel,
-                  style: TextStyle(color: stateColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      color: stateColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(width: 10),
               const Text('VP',
                   style: TextStyle(
-                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1)),
               const SizedBox(width: 6),
               Icon(roleIcon, size: 16, color: Colors.white54),
               const SizedBox(width: 10),
@@ -55,9 +62,13 @@ class CompactTopBar extends StatelessWidget implements PreferredSizeWidget {
                 child: Text(info,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.lightBlueAccent, fontSize: 11)),
+                    style: const TextStyle(
+                        color: Colors.lightBlueAccent, fontSize: 11)),
               ),
-              for (final action in actions) ...[const SizedBox(width: 6), action],
+              for (final action in actions) ...[
+                const SizedBox(width: 6),
+                action
+              ],
               if (onOpenSettings != null)
                 IconButton(
                   key: const Key('settings-button'),
@@ -82,7 +93,12 @@ class BarButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Widget? icon;
 
-  const BarButton({super.key, required this.label, required this.color, required this.onPressed, this.icon});
+  const BarButton(
+      {super.key,
+      required this.label,
+      required this.color,
+      required this.onPressed,
+      this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -93,13 +109,15 @@ class BarButton extends StatelessWidget {
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
     );
-    final text = Text(label, style: const TextStyle(color: Colors.white, fontSize: 12));
+    final text =
+        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12));
     final leading = icon;
     return SizedBox(
       height: 30,
       child: leading == null
           ? ElevatedButton(style: style, onPressed: onPressed, child: text)
-          : ElevatedButton.icon(style: style, onPressed: onPressed, icon: leading, label: text),
+          : ElevatedButton.icon(
+              style: style, onPressed: onPressed, icon: leading, label: text),
     );
   }
 }

@@ -22,7 +22,12 @@ class VisionPanel extends StatelessWidget {
   /// Replaces the downloaded AI video (Controller + Camera shows its own preview).
   final Widget? video;
 
-  const VisionPanel({super.key, required this.state, required this.frame, required this.send, this.video});
+  const VisionPanel(
+      {super.key,
+      required this.state,
+      required this.frame,
+      required this.send,
+      this.video});
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +66,8 @@ class ModeChips extends StatelessWidget {
       children: [
         for (final mode in modes)
           ChoiceChip(
-            label: Text(_modeNames[mode] ?? mode, style: const TextStyle(fontSize: 12)),
+            label: Text(_modeNames[mode] ?? mode,
+                style: const TextStyle(fontSize: 12)),
             selected: state?.mode == mode,
             visualDensity: VisualDensity.compact,
             selectedColor: Colors.greenAccent.shade700,
@@ -82,7 +88,8 @@ class _VideoView extends StatelessWidget {
     final bytes = frame;
     if (bytes == null) {
       return Container(
-        decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(
+            color: Colors.black, borderRadius: BorderRadius.circular(10)),
         alignment: Alignment.center,
         child: const Text(
           'Waiting for AI video...\nOpen the camera page on the car phone.',
@@ -99,11 +106,15 @@ class _VideoView extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, box) => GestureDetector(
             onTapUp: (tap) {
-              final point = containTap(Size(box.maxWidth, box.maxHeight), imageSize, tap.localPosition);
-              if (point != null) send({'type': 'tap', 'x': point.dx, 'y': point.dy});
+              final point = containTap(Size(box.maxWidth, box.maxHeight),
+                  imageSize, tap.localPosition);
+              if (point != null) {
+                send({'type': 'tap', 'x': point.dx, 'y': point.dy});
+              }
             },
             child: SizedBox.expand(
-              child: Image.memory(bytes, gaplessPlayback: true, fit: BoxFit.contain),
+              child: Image.memory(bytes,
+                  gaplessPlayback: true, fit: BoxFit.contain),
             ),
           ),
         ),
@@ -120,14 +131,19 @@ class _StatusLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = state;
     if (s == null) {
-      return const Text('Connecting to laptop...', style: TextStyle(color: Colors.white54, fontSize: 12));
+      return const Text('Connecting to laptop...',
+          style: TextStyle(color: Colors.white54, fontSize: 12));
     }
     final safety = s.safety;
     return Text(
-      safety != null && safety != 'standby' ? 'STOP: $safety | ${s.status}' : s.status,
+      safety != null && safety != 'standby'
+          ? 'STOP: $safety | ${s.status}'
+          : s.status,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(color: safety != null ? Colors.orangeAccent : Colors.greenAccent, fontSize: 12),
+      style: TextStyle(
+          color: safety != null ? Colors.orangeAccent : Colors.greenAccent,
+          fontSize: 12),
     );
   }
 }
@@ -140,7 +156,8 @@ class _TargetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labels = state?.labels ?? const <String>[];
-    final current = labels.contains(state?.targetLabel) ? state?.targetLabel : null;
+    final current =
+        labels.contains(state?.targetLabel) ? state?.targetLabel : null;
     return Row(
       children: [
         Expanded(
@@ -152,9 +169,12 @@ class _TargetRow extends StatelessWidget {
                 style: const TextStyle(fontSize: 12, color: Colors.white54)),
             items: [
               for (final label in labels)
-                DropdownMenuItem(value: label, child: Text(label, style: const TextStyle(fontSize: 12))),
+                DropdownMenuItem(
+                    value: label,
+                    child: Text(label, style: const TextStyle(fontSize: 12))),
             ],
-            onChanged: (label) => send({'type': 'target_class', 'label': label}),
+            onChanged: (label) =>
+                send({'type': 'target_class', 'label': label}),
           ),
         ),
         IconButton(

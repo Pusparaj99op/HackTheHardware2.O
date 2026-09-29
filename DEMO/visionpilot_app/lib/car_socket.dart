@@ -36,14 +36,17 @@ class CarSocket {
   final _telemController = StreamController<Telemetry>.broadcast();
   Stream<Telemetry> get telemetry => _telemController.stream;
 
-  CarSocket({this.carIp = '192.168.4.1', this.cmdPort = 4210, this.telemPort = 4211});
+  CarSocket(
+      {this.carIp = '192.168.4.1', this.cmdPort = 4210, this.telemPort = 4211});
 
   Future<void> start() async {
     _cmdSock = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
-    _telemSock = await RawDatagramSocket.bind(InternetAddress.anyIPv4, telemPort);
+    _telemSock =
+        await RawDatagramSocket.bind(InternetAddress.anyIPv4, telemPort);
     _telemSock!.listen(_onDatagram);
     // 20 Hz drive loop — matches laptop control rate
-    _driveTimer = Timer.periodic(const Duration(milliseconds: 50), (_) => _sendDrive());
+    _driveTimer =
+        Timer.periodic(const Duration(milliseconds: 50), (_) => _sendDrive());
   }
 
   void _onDatagram(RawSocketEvent event) {

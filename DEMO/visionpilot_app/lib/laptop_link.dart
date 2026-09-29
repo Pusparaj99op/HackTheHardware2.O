@@ -60,18 +60,23 @@ class LaptopLink implements VisionLink {
   @override
   Stream<String> get errors => _errors.stream;
 
-  Uri get uri => Uri.parse('${tls ? 'wss' : 'ws'}://$host:$port$path${withFrames ? '' : '?frames=0'}');
+  Uri get uri => Uri.parse(
+      '${tls ? 'wss' : 'ws'}://$host:$port$path${withFrames ? '' : '?frames=0'}');
 
   /// Connects once; returns true when the socket is open.
   Future<bool> connect() async {
     if (_closed) return false;
     try {
       // The laptop uses a self-signed certificate: trust it for THIS host only.
-      final client = HttpClient()..badCertificateCallback = (cert, certHost, certPort) => certHost == host;
-      final ws = await WebSocket.connect(uri.toString(), customClient: client).timeout(_connectTimeout);
+      final client = HttpClient()
+        ..badCertificateCallback =
+            (cert, certHost, certPort) => certHost == host;
+      final ws = await WebSocket.connect(uri.toString(), customClient: client)
+          .timeout(_connectTimeout);
       _ws = ws;
       connected.value = true;
-      ws.listen(_onMessage, onDone: _onClosed, onError: (_) => _onClosed(), cancelOnError: true);
+      ws.listen(_onMessage,
+          onDone: _onClosed, onError: (_) => _onClosed(), cancelOnError: true);
       return true;
     } on Exception {
       // TimeoutException, SocketException, HandshakeException, WebSocketException
@@ -83,7 +88,9 @@ class LaptopLink implements VisionLink {
   @override
   void send(Map<String, Object?> message) {
     final ws = _ws;
-    if (ws != null && ws.readyState == WebSocket.open) ws.add(jsonEncode(message));
+    if (ws != null && ws.readyState == WebSocket.open) {
+      ws.add(jsonEncode(message));
+    }
   }
 
   /// Sends a camera frame (JPEG) on the /ws/phone channel.
@@ -109,7 +116,9 @@ class LaptopLink implements VisionLink {
 
   void _onClosed() {
     _ws = null;
-    if (_closed) return; // socket closed by dispose(): the notifier is already disposed
+    if (_closed) {
+      return; // socket closed by dispose(): the notifier is already disposed
+    }
     connected.value = false;
     _retry?.cancel();
     _retry = Timer(_retryDelay, connect);
@@ -135,7 +144,8 @@ class LaptopLink implements VisionLink {
     bool frames = true,
   }) async {
     if (savedIp != null && savedIp.isNotEmpty) {
-      final saved = LaptopLink(host: savedIp, port: savedPort, path: path, withFrames: frames);
+      final saved = LaptopLink(
+          host: savedIp, port: savedPort, path: path, withFrames: frames);
       if (await saved.connect()) return saved;
       saved.dispose();
     }
@@ -167,7 +177,11 @@ class LaptopLink implements VisionLink {
       if (dg == null || found.isCompleted) return;
       final parts = ascii.decode(dg.data, allowInvalid: true).trim().split(',');
       if (parts.length == 3 && parts[0] == 'VPL') {
-        found.complete((ip: dg.address.address, port: int.tryParse(parts[1]) ?? 8443, tls: parts[2] == '1'));
+        found.complete((
+          ip: dg.address.address,
+          port: int.tryParse(parts[1]) ?? 8443,
+          tls: parts[2] == '1'
+        ));
       }
     });
     final request = ascii.encode('VP?');
