@@ -33,7 +33,8 @@ def main() -> None:
     for ip in local_ipv4s():
         if ip != "127.0.0.1":
             print(f"Phone:                   {scheme}://{ip}:{net.port}/phone")
-    print("The car starts KILLED - press ARM on the dashboard.\n")
+    print("Standby: the phone app drives until you press VISION (or ENGAGE on the dashboard).")
+    print("Controller app: Settings -> Find laptop, or it auto-discovers when you press VISION.\n")
 
     ssl = {}
     if net.tls:

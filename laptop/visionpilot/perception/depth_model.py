@@ -21,7 +21,13 @@ class DepthModel:
         cuda = torch.cuda.is_available()
         self._device = "cuda" if cuda else "cpu"
         self._dtype = torch.float16 if cuda else torch.float32
-        self._model = AutoModelForDepthEstimation.from_pretrained(model_id, torch_dtype=self._dtype)
+        try:  # the car's Wi-Fi has no internet: use the prefetched cache first
+            self._model = AutoModelForDepthEstimation.from_pretrained(
+                model_id, dtype=self._dtype, local_files_only=True
+            )
+        except OSError:
+            log.info("Depth model not cached yet - downloading %s", model_id)
+            self._model = AutoModelForDepthEstimation.from_pretrained(model_id, dtype=self._dtype)
         self._model = self._model.to(self._device).eval()
         self._height, self._width = size
         self._mean = torch.tensor(IMAGENET_MEAN, device=self._device).view(1, 3, 1, 1)

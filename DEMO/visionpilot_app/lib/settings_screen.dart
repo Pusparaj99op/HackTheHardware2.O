@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'laptop_link.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,6 +15,36 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _ipCtrl = TextEditingController(text: '192.168.4.1');
   final _portCtrl = TextEditingController(text: '4210');
+  final _laptopCtrl = TextEditingController();
+  bool _searching = false;
+
+  @override
+  void dispose() {
+    _ipCtrl.dispose();
+    _portCtrl.dispose();
+    _laptopCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _findLaptop() async {
+    setState(() => _searching = true);
+    final found = await LaptopLink.discover();
+    if (!mounted) return;
+    setState(() => _searching = false);
+    if (found == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('No laptop answered. Is it on the VisionPilot Wi-Fi with the server running?')));
+      return;
+    }
+    _laptopCtrl.text = found.ip;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('laptop_ip', found.ip);
+    await prefs.setInt('laptop_port', found.port);
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Laptop found at ${found.ip}:${found.port}')));
+    }
+  }
 
   @override
   void initState() {
@@ -22,13 +56,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     _ipCtrl.text = prefs.getString('car_ip') ?? '192.168.4.1';
     _portCtrl.text = (prefs.getInt('cmd_port') ?? 4210).toString();
-    setState(() {});
+    _laptopCtrl.text = prefs.getString('laptop_ip') ?? '';
+    if (mounted) setState(() {});
   }
 
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('car_ip', _ipCtrl.text.trim());
     await prefs.setInt('cmd_port', int.tryParse(_portCtrl.text) ?? 4210);
+    final laptop = _laptopCtrl.text.trim();
+    if (laptop.isEmpty || InternetAddress.tryParse(laptop) == null) {
+      await prefs.remove('laptop_ip'); // empty/invalid -> auto-discover when VISION is pressed
+    } else {
+      await prefs.setString('laptop_ip', laptop);
+    }
     if (mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Saved — restart app to apply')));
@@ -44,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Settings', style: TextStyle(color: Colors.white)),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,6 +117,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
+            const SizedBox(height: 16),
+            const Text('Laptop (vision brain) IP - empty = auto-discover',
+                style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 6),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _laptopCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. 192.168.4.2',
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true, fillColor: Colors.white10,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: _searching ? null : _findLaptop,
+                icon: _searching
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.wifi_find),
+                label: const Text('Find laptop'),
+              ),
+            ]),
             const SizedBox(height: 24),
             const Text(
               'ESP32 AP mode:\n'

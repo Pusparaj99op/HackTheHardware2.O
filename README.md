@@ -7,6 +7,49 @@ It uses camera vision only, like Tesla: no LiDAR.
 📱 Phone (Chrome) ──video + gyro──► 💻 Laptop AI (YOLO11 + Depth-Anything) ──UDP 20 Hz──► 🚗 ESP32 → L298N + servo
 ```
 
+## 👁️ Vision mode with the phone controller app (current setup)
+
+```
+            ESP32 Wi-Fi AP "VisionPilot" (password vp123456, car = 192.168.4.1)
+   📱 Controller app (joysticks)     💻 Laptop AI brain        📱 Camera phone (Chrome)
+   VISION OFF → drives car directly   silent (only pings)       -
+   VISION ON  → joystick = override → laptop drives the car ←── camera video + gyro
+   KILL       → straight to the car + tells the laptop
+```
+
+**Before the demo (needs internet, once):**
+```powershell
+cd laptop
+.venv\Scripts\python tools\prefetch_models.py   # downloads YOLO + depth, prints GPU speed
+```
+
+**Every run:**
+1. Power the car → the `VisionPilot` Wi-Fi appears.
+2. **Laptop** joins `VisionPilot` → `cd laptop` → `.venv\Scripts\python -m visionpilot`.
+   Allow Python through Windows Firewall (private network) when asked.
+3. **Camera phone** joins `VisionPilot` → Chrome → the `https://192.168.4.x:8443/phone` URL printed in the terminal → *Advanced → Proceed* → **Start camera**. Mount it on the car in landscape (or hold it over the car for Hand-held mode).
+4. **Controller phone** joins `VisionPilot` → open the app. The joysticks work immediately (direct mode).
+5. Tap **VISION**. The app finds the laptop by itself (or use Settings → *Find laptop*). The AI video appears between the sticks.
+6. Pick a mode chip:
+
+| Mode | What it does |
+|---|---|
+| **Assist** | You drive with the sticks; vision **auto-brakes** before obstacles |
+| **Follow** ⭐ | Tap an object in the video (or pick a class); the car follows it and stops ~0.8 m away |
+| **Explore** | The car roams by itself toward open space and records its path |
+| **Replay** | Re-drives a saved path (save it on the laptop dashboard) |
+| **Hand-held** | Hold the camera phone over the car (ArUco marker on the roof), tap a floor spot, and the car drives there |
+
+- **Touch a stick = instant manual override.** Let go, and vision resumes after 1 s.
+- **VISION** again hands control back to the joysticks.
+- **KILL** always goes straight to the car. After a KILL, press **CLEAR** to drive again.
+- If the laptop drops out, the car stops (300 ms watchdog) and the app returns to direct joystick control.
+- The ESP32 AP allows at most 4 devices; we use 3.
+
+---
+
+## Laptop-only mode (original)
+
 | Mode | What it does |
 |---|---|
 | **Manual** | Drive with WASD or the on-screen pad |

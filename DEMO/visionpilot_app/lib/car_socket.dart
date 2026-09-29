@@ -68,9 +68,38 @@ class CarSocket {
     _steer = steer.clamp(-100, 100);
   }
 
+  /// While VISION is on the laptop drives the car: we must not send drive
+  /// packets (the car would jitter between two drivers), only a slow ping so
+  /// the car keeps sending us telemetry.
+  bool paused = false;
+  int _tick = 0;
+
   void _sendDrive() {
-    _seq = (_seq + 1) & 0xFFFFFFFF;
-    _send('D,$_seq,$_throttle,$_steer');
+    _tick++;
+    final packet = packetFor(
+      paused: paused,
+      tick: _tick,
+      seq: _seq + 1,
+      throttle: _throttle,
+      steer: _steer,
+    );
+    if (packet == null) return;
+    if (packet.startsWith('D')) _seq = (_seq + 1) & 0xFFFFFFFF;
+    _send(packet);
+  }
+
+  static const pingEveryTicks = 10; // 20 Hz loop -> 2 Hz ping
+
+  /// Pure packet choice for one 20 Hz tick (unit-tested).
+  static String? packetFor({
+    required bool paused,
+    required int tick,
+    required int seq,
+    required int throttle,
+    required int steer,
+  }) {
+    if (!paused) return 'D,${seq & 0xFFFFFFFF},$throttle,$steer';
+    return tick % pingEveryTicks == 0 ? 'P' : null;
   }
 
   void sendKill() => _send('K');
