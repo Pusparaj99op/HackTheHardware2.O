@@ -29,6 +29,12 @@ class LaptopLink implements VisionLink {
   final int port;
   final bool tls;
 
+  /// '/ws/dash' (controller: state + commands) or '/ws/phone' (camera: sends frames + gyro).
+  final String path;
+
+  /// false -> '?frames=0': don't download annotated video (we show our own camera).
+  final bool withFrames;
+
   @override
   final ValueNotifier<bool> connected = ValueNotifier<bool>(false);
   final _states = StreamController<VisionState>.broadcast();
@@ -39,7 +45,13 @@ class LaptopLink implements VisionLink {
   Timer? _retry;
   bool _closed = false;
 
-  LaptopLink({required this.host, this.port = 8443, this.tls = true});
+  LaptopLink({
+    required this.host,
+    this.port = 8443,
+    this.tls = true,
+    this.path = '/ws/dash',
+    this.withFrames = true,
+  });
 
   @override
   Stream<VisionState> get states => _states.stream;
@@ -48,7 +60,7 @@ class LaptopLink implements VisionLink {
   @override
   Stream<String> get errors => _errors.stream;
 
-  Uri get uri => Uri.parse('${tls ? 'wss' : 'ws'}://$host:$port/ws/dash');
+  Uri get uri => Uri.parse('${tls ? 'wss' : 'ws'}://$host:$port$path${withFrames ? '' : '?frames=0'}');
 
   /// Connects once; returns true when the socket is open.
   Future<bool> connect() async {
@@ -72,6 +84,12 @@ class LaptopLink implements VisionLink {
   void send(Map<String, Object?> message) {
     final ws = _ws;
     if (ws != null && ws.readyState == WebSocket.open) ws.add(jsonEncode(message));
+  }
+
+  /// Sends a camera frame (JPEG) on the /ws/phone channel.
+  void sendBinary(Uint8List data) {
+    final ws = _ws;
+    if (ws != null && ws.readyState == WebSocket.open) ws.add(data);
   }
 
   void _onMessage(dynamic data) {
@@ -110,15 +128,26 @@ class LaptopLink implements VisionLink {
 
   /// Finds and connects to the laptop: saved address first, then discovery.
   /// Returns null when no laptop answers.
-  static Future<LaptopLink?> findAndConnect({String? savedIp, int savedPort = 8443}) async {
+  static Future<LaptopLink?> findAndConnect({
+    String? savedIp,
+    int savedPort = 8443,
+    String path = '/ws/dash',
+    bool frames = true,
+  }) async {
     if (savedIp != null && savedIp.isNotEmpty) {
-      final saved = LaptopLink(host: savedIp, port: savedPort);
+      final saved = LaptopLink(host: savedIp, port: savedPort, path: path, withFrames: frames);
       if (await saved.connect()) return saved;
       saved.dispose();
     }
     final found = await discover();
     if (found == null) return null;
-    final link = LaptopLink(host: found.ip, port: found.port, tls: found.tls);
+    final link = LaptopLink(
+      host: found.ip,
+      port: found.port,
+      tls: found.tls,
+      path: path,
+      withFrames: frames,
+    );
     if (await link.connect()) return link;
     link.dispose();
     return null;

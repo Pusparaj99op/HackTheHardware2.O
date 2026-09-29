@@ -7,9 +7,13 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
+  camera: ^0.12.1
   flutter:
     sdk: flutter
+  image: ^4.10.1
+  sensors_plus: ^7.1.0
   shared_preferences: ^2.2.0
+  wakelock_plus: ^1.8.0
 
 dev_dependencies:
   flutter_test:

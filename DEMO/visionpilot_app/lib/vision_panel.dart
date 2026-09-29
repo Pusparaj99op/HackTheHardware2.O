@@ -19,7 +19,10 @@ class VisionPanel extends StatelessWidget {
   final Uint8List? frame;
   final void Function(Map<String, Object?> command) send;
 
-  const VisionPanel({super.key, required this.state, required this.frame, required this.send});
+  /// Replaces the downloaded AI video (Controller + Camera shows its own preview).
+  final Widget? video;
+
+  const VisionPanel({super.key, required this.state, required this.frame, required this.send, this.video});
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +30,14 @@ class VisionPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ModeChips(state: s, send: send),
-        const SizedBox(height: 6),
-        Expanded(child: _VideoView(frame: frame, send: send)),
+        ModeChips(state: s, send: send),
+        const SizedBox(height: 4),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: video ?? _VideoView(frame: frame, send: send),
+          ),
+        ),
         const SizedBox(height: 6),
         _StatusLine(state: s),
         _TargetRow(state: s, send: send),
@@ -38,10 +46,10 @@ class VisionPanel extends StatelessWidget {
   }
 }
 
-class _ModeChips extends StatelessWidget {
+class ModeChips extends StatelessWidget {
   final VisionState? state;
   final void Function(Map<String, Object?>) send;
-  const _ModeChips({required this.state, required this.send});
+  const ModeChips({super.key, required this.state, required this.send});
 
   @override
   Widget build(BuildContext context) {

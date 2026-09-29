@@ -1,23 +1,30 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_role.dart';
+import 'camera_streamer.dart';
 import 'car_socket.dart';
+import 'detection_overlay.dart';
 import 'joystick_widget.dart';
 import 'laptop_link.dart';
+import 'top_bar.dart';
 import 'vision_panel.dart';
 import 'vision_state.dart';
 
 /// Finds and connects to the laptop vision brain; null if not reachable.
-typedef VisionConnector = Future<VisionLink?> Function();
+/// [frames] = false: don't download annotated video (we show our own camera).
+typedef VisionConnector = Future<VisionLink?> Function({bool frames});
 
-Future<VisionLink?> connectSavedOrDiscoveredLaptop() async {
+Future<VisionLink?> connectSavedOrDiscoveredLaptop({bool frames = true}) async {
   final prefs = await SharedPreferences.getInstance();
   final link = await LaptopLink.findAndConnect(
     savedIp: prefs.getString('laptop_ip'),
     savedPort: prefs.getInt('laptop_port') ?? 8443,
+    frames: frames,
   );
   if (link != null) {
     await prefs.setString('laptop_ip', link.host);
@@ -30,12 +37,16 @@ class ControlScreen extends StatefulWidget {
   final CarSocket socket;
   final String carIp;
   final VisionConnector connectVision;
+  final AppRole role;
+  final VoidCallback? onOpenSettings;
 
   const ControlScreen({
     super.key,
     required this.socket,
     required this.carIp,
     this.connectVision = connectSavedOrDiscoveredLaptop,
+    this.role = AppRole.controller,
+    this.onOpenSettings,
   });
 
   @override
@@ -57,6 +68,7 @@ class _ControlScreenState extends State<ControlScreen> {
   Uint8List? _frame;
   final _visionSubs = <StreamSubscription<Object?>>[];
   Timer? _overrideTimer;
+  CameraSession? _camera; // Controller + Camera role: this phone's own camera
   StreamSubscription<Telemetry>? _telemSub;
 
   @override
@@ -101,7 +113,8 @@ class _ControlScreenState extends State<ControlScreen> {
       return;
     }
     setState(() => _connecting = true);
-    final link = await widget.connectVision();
+    // With our own camera we draw boxes locally: no need to download AI video.
+    final link = await widget.connectVision(frames: !widget.role.streamsCamera);
     if (!mounted) {
       link?.dispose();
       return;
@@ -126,6 +139,23 @@ class _ControlScreenState extends State<ControlScreen> {
     link.send({'type': 'engage'});
     _overrideTimer = Timer.periodic(_overridePeriod, _sendOverride);
     setState(() => _vision = true);
+    if (widget.role.streamsCamera) _startOwnCamera();
+  }
+
+  Future<void> _startOwnCamera() async {
+    final camera = CameraSession();
+    _camera = camera;
+    camera.status.addListener(_refresh);
+    try {
+      await camera.start();
+    } on CameraException catch (e) {
+      _snack('Camera error: ${e.description ?? e.code}');
+    }
+    _refresh();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
   void _onLinkChanged() {
@@ -146,6 +176,12 @@ class _ControlScreenState extends State<ControlScreen> {
   void _teardownVision() {
     _overrideTimer?.cancel();
     _overrideTimer = null;
+    final camera = _camera;
+    _camera = null;
+    if (camera != null) {
+      camera.status.removeListener(_refresh);
+      camera.close();
+    }
     for (final sub in _visionSubs) {
       sub.cancel();
     }
@@ -205,56 +241,45 @@ class _ControlScreenState extends State<ControlScreen> {
 
   Widget _visionButton() {
     final on = _vision;
-    return ElevatedButton.icon(
+    return BarButton(
       key: const Key('vision-toggle'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: on ? Colors.greenAccent.shade700 : const Color(0xFF0F3460),
-      ),
+      label: on ? 'VISION ON' : 'VISION',
+      color: on ? Colors.greenAccent.shade700 : const Color(0xFF0F3460),
       onPressed: _toggleVision,
       icon: _connecting
           ? const SizedBox(
-              width: 16,
-              height: 16,
+              width: 14,
+              height: 14,
               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
             )
-          : Icon(on ? Icons.visibility : Icons.visibility_outlined, color: Colors.white),
-      label: Text(on ? 'VISION ON' : 'VISION', style: const TextStyle(color: Colors.white)),
+          : Icon(on ? Icons.visibility : Icons.visibility_outlined, color: Colors.white, size: 16),
     );
   }
 
-  Widget _statusBar() {
-    final bumpers = _telem?.bumpers ?? [];
+  String get _barInfo {
+    if (!_vision) return 'car ${widget.carIp}';
     final vs = _visionState;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: const Color(0xFF0F3460),
-      child: Row(children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: _stateColor, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(_stateLabel, style: TextStyle(color: _stateColor, fontWeight: FontWeight.bold)),
-        const SizedBox(width: 16),
-        Text(
-          'Bumpers: ${bumpers.isEmpty ? "none" : bumpers.join(" ")}',
-          style: TextStyle(color: bumpers.isEmpty ? Colors.white54 : Colors.yellow),
-        ),
-        const SizedBox(width: 16),
-        if (_vision)
-          Expanded(
-            child: Text(
-              'AI: ${vs?.visionStatus ?? "connecting"}'
-              '${vs != null && !vs.cameraConnected ? " | camera phone not connected" : ""}',
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.lightBlueAccent, fontSize: 12),
+    final parts = [
+      'AI: ${vs?.visionStatus ?? "connecting"}',
+      if (_camera != null) 'cam: ${_camera!.status.value}',
+      if (vs != null && !vs.cameraConnected) 'no camera connected',
+    ];
+    return parts.join(' | ');
+  }
+
+  Widget _visionCenter() {
+    final camera = _camera;
+    return VisionPanel(
+      state: _visionState,
+      frame: _frame,
+      send: (command) => _link?.send(command),
+      video: camera == null
+          ? null
+          : LocalCameraView(
+              controller: camera.controller,
+              state: _visionState,
+              onTap: (p) => _link?.send({'type': 'tap', 'x': p.dx, 'y': p.dy}),
             ),
-          )
-        else
-          const Spacer(),
-        Text('${widget.carIp}:4210', style: const TextStyle(color: Colors.white30, fontSize: 11)),
-      ]),
     );
   }
 
@@ -262,32 +287,23 @@ class _ControlScreenState extends State<ControlScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF16213E),
-        title: Row(children: [
-          const Text('VisionPilot', style: TextStyle(color: Colors.white, fontSize: 16)),
-          const Spacer(),
+      appBar: CompactTopBar(
+        stateColor: _stateColor,
+        stateLabel: _stateLabel,
+        roleIcon: widget.role.icon,
+        info: _barInfo,
+        onOpenSettings: widget.onOpenSettings,
+        actions: [
           _visionButton(),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-            onPressed: _kill,
-            child: const Text('KILL', style: TextStyle(color: Colors.white)),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
-            onPressed: widget.socket.sendClear,
-            child: const Text('CLEAR', style: TextStyle(color: Colors.white)),
-          ),
-        ]),
+          BarButton(label: 'KILL', color: Colors.red.shade700, onPressed: _kill),
+          BarButton(label: 'CLEAR', color: Colors.blueGrey, onPressed: widget.socket.sendClear),
+        ],
       ),
       body: Column(
         children: [
-          _statusBar(),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
               child: Row(
                 children: [
                   Expanded(
@@ -298,14 +314,7 @@ class _ControlScreenState extends State<ControlScreen> {
                     ),
                   ),
                   if (_vision)
-                    Expanded(
-                      flex: 2,
-                      child: VisionPanel(
-                        state: _visionState,
-                        frame: _frame,
-                        send: (command) => _link?.send(command),
-                      ),
-                    )
+                    Expanded(flex: 2, child: _visionCenter())
                   else
                     const SizedBox(width: 32),
                   Expanded(
@@ -320,7 +329,7 @@ class _ControlScreenState extends State<ControlScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

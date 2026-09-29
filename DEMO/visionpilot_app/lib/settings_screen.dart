@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_role.dart';
+import 'camera_streamer.dart';
 import 'laptop_link.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -17,6 +19,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _portCtrl = TextEditingController(text: '4210');
   final _laptopCtrl = TextEditingController();
   bool _searching = false;
+  AppRole _role = AppRole.controller;
+  bool _rotate180 = false;
+
+  Future<void> _setRole(AppRole role) async {
+    setState(() => _role = role);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(AppRole.prefsKey, role.name);
+  }
+
+  Future<void> _setRotate(bool value) async {
+    setState(() => _rotate180 = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(CameraSession.rotateKey, value);
+  }
 
   @override
   void dispose() {
@@ -57,6 +73,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _ipCtrl.text = prefs.getString('car_ip') ?? '192.168.4.1';
     _portCtrl.text = (prefs.getInt('cmd_port') ?? 4210).toString();
     _laptopCtrl.text = prefs.getString('laptop_ip') ?? '';
+    _role = AppRole.parse(prefs.getString(AppRole.prefsKey));
+    _rotate180 = prefs.getBool(CameraSession.rotateKey) ?? false;
     if (mounted) setState(() {});
   }
 
@@ -90,6 +108,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text('This phone is the...', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 6),
+            SegmentedButton<AppRole>(
+              key: const Key('role-picker'),
+              segments: [
+                for (final role in AppRole.values)
+                  ButtonSegment(value: role, label: Text(role.label), icon: Icon(role.icon)),
+              ],
+              selected: {_role},
+              onSelectionChanged: (selection) => _setRole(selection.first),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Controller: joysticks, AI video from the laptop.  Camera: this phone is the car\'s eyes '
+              '(mount it on the car).  Controller + Camera: one phone does both.',
+              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('Rotate camera 180°', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              subtitle: const Text('Use if the AI video is upside down',
+                  style: TextStyle(color: Colors.white38, fontSize: 11)),
+              value: _rotate180,
+              onChanged: _setRotate,
+            ),
+            const SizedBox(height: 12),
             const Text('Car IP address', style: TextStyle(color: Colors.white70, fontSize: 13)),
             const SizedBox(height: 6),
             TextField(

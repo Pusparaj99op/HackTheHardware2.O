@@ -39,6 +39,9 @@ class VisionState {
   final int? targetId;
   final int? focus;
   final bool cameraConnected;
+  final Offset? targetPoint; // hand-held floor target, normalised
+  final Offset? markerPosition; // car's roof marker (hand-held), normalised
+  final double markerHeading; // radians, image space (0 = right, + = clockwise)
 
   const VisionState({
     this.mode = 'manual',
@@ -54,6 +57,9 @@ class VisionState {
     this.targetId,
     this.focus,
     this.cameraConnected = false,
+    this.targetPoint,
+    this.markerPosition,
+    this.markerHeading = 0,
   });
 
   factory VisionState.fromJson(Map<String, dynamic> j) {
@@ -77,6 +83,9 @@ class VisionState {
       targetId: target['track_id'] is int ? target['track_id'] as int : null,
       focus: j['focus'] is int ? j['focus'] as int : null,
       cameraConnected: j['phone_connected'] == true,
+      targetPoint: _point(target['point']),
+      markerPosition: j['marker'] is Map ? _point([(j['marker'] as Map)['x'], (j['marker'] as Map)['y']]) : null,
+      markerHeading: j['marker'] is Map ? _toDouble((j['marker'] as Map)['heading']) : 0,
     );
   }
 
@@ -143,6 +152,11 @@ Size? jpegSize(Uint8List bytes) {
 }
 
 double _toDouble(Object? v) => v is num ? v.toDouble() : 0.0;
+
+Offset? _point(Object? raw) =>
+    raw is List && raw.length == 2 && raw[0] is num && raw[1] is num
+        ? Offset((raw[0] as num).toDouble(), (raw[1] as num).toDouble())
+        : null;
 
 List<String> _strings(Object? raw, List<String> fallback) =>
     raw is List ? raw.map((e) => e.toString()).toList(growable: false) : fallback;
