@@ -17,7 +17,7 @@ from .behaviors.base import BehaviorOutput, WorldState
 from .behaviors.explore import ExploreBehavior
 from .behaviors.follow import FollowBehavior, pick_by_tap
 from .behaviors.handheld import HandheldBehavior
-from .behaviors.manual import ManualBehavior
+from .behaviors.manual import AssistBehavior, ManualBehavior
 from .behaviors.obstacles import path_blocked
 from .behaviors.replay import ReplayBehavior
 from .config import Settings
@@ -38,10 +38,12 @@ from .safety import SafetyDecision, SafetyInputs, arbitrate
 
 log = logging.getLogger(__name__)
 TRAIL_POINTS = 300
+STANDBY = "standby"
 
 
 class Mode(str, Enum):
     MANUAL = "manual"
+    ASSIST = "assist"
     FOLLOW = "follow"
     EXPLORE = "explore"
     REPLAY = "replay"
@@ -56,6 +58,7 @@ class CarLinkLike(Protocol):
     def send_drive(self, cmd: DriveCommand) -> None: ...
     def send_kill(self) -> None: ...
     def send_clear(self) -> None: ...
+    def send_ping(self) -> None: ...
 
 
 def _r(value: float) -> float:
@@ -77,13 +80,17 @@ class ControlLoop:
         self._replay = ReplayBehavior(settings.replay)
         self._behaviors = {
             Mode.MANUAL: ManualBehavior(),
+            Mode.ASSIST: AssistBehavior(),
             Mode.FOLLOW: FollowBehavior(settings.follow),
             Mode.EXPLORE: ExploreBehavior(settings.explore),
             Mode.REPLAY: self._replay,
             Mode.HANDHELD: HandheldBehavior(settings.handheld),
         }
         self.mode = Mode.MANUAL
-        self.killed = True  # start safe: the dashboard must ARM first
+        # Disengaged = the laptop sends NO drive packets (the phone app owns the car).
+        # VISION ON in the app (or ENGAGE on the dashboard) hands the car to the laptop.
+        self.engaged = False
+        self._last_ping = float("-inf")
         self.target = Target()
         self.vision_status = "starting"
         self.labels: list[str] = []
@@ -95,7 +102,7 @@ class ControlLoop:
         self._ghost: tuple[tuple[float, float], ...] = ()
         self._prev_bumpers = 0
         self._output = BehaviorOutput(STOP, "starting")
-        self._decision = SafetyDecision(STOP, "killed")
+        self._decision = SafetyDecision(STOP, STANDBY)
         self._tracks = list_tracks(self._tracks_dir)
         self._notice = ""
 
@@ -119,16 +126,26 @@ class ControlLoop:
             self.mode = mode
             log.info("Mode -> %s", mode.value)
 
-    def kill(self) -> None:
-        self.killed = True
-        self._link.send_kill()
-
-    def arm(self) -> None:
-        self.killed = False
+    def engage(self) -> None:
+        """Take the car: clear its kill latch and start sending drive packets."""
+        self.engaged = True
         self._link.send_clear()
 
+    arm = engage  # legacy name
+
+    def release(self) -> None:
+        """Hand the car back to the phone app: one STOP, then silence."""
+        if self.engaged:
+            self.engaged = False
+            self._link.send_drive(STOP)
+
+    def kill(self) -> None:
+        """Emergency: latch the car's kill (needs CLEAR on the app or ENGAGE) and go silent."""
+        self.engaged = False
+        self._link.send_kill()
+
     def clear_bumper(self) -> None:
-        if not self.killed:  # "C" also clears the car's kill latch, so never send it while killed
+        if self.engaged:  # "C" also clears the car's kill latch, so only when we own the car
             self._link.send_clear()
 
     def set_manual(self, throttle: float, steer: float) -> None:
@@ -189,23 +206,48 @@ class ControlLoop:
     # ------------------------------------------------------------ loop
     def tick(self, dt: float) -> None:
         now = self._clock()
+        if not self.engaged:
+            self._standby(now)
+            return
         world, video_fresh, link_ok = self._world(now)
         behavior = self._behaviors[self.mode]
-        self._output = behavior.step(world)
-        if self._output.target is not None:
-            self.target = self._output.target
+        output = behavior.step(world)
+        if output.target is not None:
+            self.target = output.target
+        self._output, overriding = self._joystick_override(output, now)
         inputs = SafetyInputs(
-            killed=self.killed,
+            killed=False,
             bumper_mask=world.bumper_mask,
             car_link_ok=link_ok,
             video_fresh=video_fresh,
             obstacle_close=world.obstacle_close,
             speed_cap=self._speed_cap,
-            requires_video=behavior.requires_video,
+            requires_video=behavior.requires_video and not overriding,
         )
         self._decision = arbitrate(self._output.command, inputs)
         self._link.send_drive(self._decision.command)
         self._record(world, video_fresh, link_ok, dt)
+
+    def _standby(self, now: float) -> None:
+        """Phone app owns the car: send nothing but a slow ping (to keep receiving telemetry)."""
+        self._output = BehaviorOutput(STOP, "standby - press VISION in the app (or ENGAGE)")
+        self._decision = SafetyDecision(STOP, STANDBY)
+        if now - self._last_ping >= self._s.control.ping_period_s:
+            self._last_ping = now
+            self._link.send_ping()
+
+    def _joystick_override(self, output: BehaviorOutput, now: float) -> tuple[BehaviorOutput, bool]:
+        """In autonomous modes a joystick touch takes over; vision resumes after a short hold."""
+        if self.mode in (Mode.MANUAL, Mode.ASSIST):
+            return output, False
+        since = now - self._manual_time
+        control = self._s.control
+        if since <= control.manual_timeout_s:
+            return BehaviorOutput(self._manual, "manual override (joystick)", focus=output.focus), True
+        if since <= control.override_hold_s:
+            wait = control.override_hold_s - since
+            return BehaviorOutput(STOP, f"vision resuming in {wait:.1f} s", focus=output.focus), True
+        return output, False
 
     def _world(self, now: float) -> tuple[WorldState, bool, bool]:
         p = self._perception
@@ -216,7 +258,7 @@ class ControlLoop:
         detections = p.detections if (p and video_fresh) else ()
         openness = p.openness if (p and video_fresh) else None
         manual_fresh = now - self._manual_time <= self._s.control.manual_timeout_s
-        car_mounted_auto = self.mode in (Mode.FOLLOW, Mode.EXPLORE, Mode.REPLAY)
+        car_mounted_auto = self.mode in (Mode.ASSIST, Mode.FOLLOW, Mode.EXPLORE, Mode.REPLAY)
         exclude = self.target.track_id if self.mode is Mode.FOLLOW else None
         obstacle = car_mounted_auto and path_blocked(detections, exclude, openness, self._s.obstacles)
         world = WorldState(
@@ -255,7 +297,8 @@ class ControlLoop:
         focus = self._output.focus
         return {
             "mode": self.mode.value,
-            "killed": self.killed,
+            "engaged": self.engaged,
+            "modes": [m.value for m in Mode],
             "status": self._output.status,
             "safety": self._decision.reason,
             "command": [round(cmd.throttle), round(cmd.steer)],

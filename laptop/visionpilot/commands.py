@@ -77,7 +77,9 @@ def _track_load(control: ControlLoop, msg: dict) -> None:
 
 
 HANDLERS: dict[str, Callable[[ControlLoop, dict], None]] = {
-    "arm": lambda c, m: c.arm(),
+    "engage": lambda c, m: c.engage(),
+    "arm": lambda c, m: c.engage(),  # legacy name used by older pages
+    "release": lambda c, m: c.release(),
     "kill": lambda c, m: c.kill(),
     "mode": _mode,
     "manual": lambda c, m: c.set_manual(_num(m, "throttle", -100, 100), _num(m, "steer", -100, 100)),

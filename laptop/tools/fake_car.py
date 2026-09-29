@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - non-Windows
 
 WATCHDOG_S = 0.3
 TELEM_PERIOD_S = 0.1
+PEER_TIMEOUT_S = 2.0
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,6 +38,7 @@ def main() -> None:
     seq, throttle, steer, bumpers = 0, 0, 0, 0
     killed, locked, reversed_since_bump = False, False, False
     last_drive, last_telem = 0.0, 0.0
+    peers: dict[str, float] = {}
     print(__doc__)
     while True:
         now = time.monotonic()
@@ -53,8 +55,11 @@ def main() -> None:
             locked = False
         try:
             while True:
-                data, _ = sock.recvfrom(64)
+                data, addr = sock.recvfrom(64)
+                peers[addr[0]] = now  # like the firmware: every sender gets telemetry
                 msg = data.decode("ascii", "replace")
+                if msg == "P":
+                    continue
                 if msg == "K":
                     killed, throttle, steer = True, 0, 0
                 elif msg == "C":
@@ -76,7 +81,9 @@ def main() -> None:
         if now - last_telem >= TELEM_PERIOD_S:
             last_telem = now
             packet = f"T,{seq},{bumpers},7800,{state}".encode("ascii")
-            sock.sendto(packet, (args.laptop_ip, args.telem_port))
+            live = [ip for ip, seen in peers.items() if now - seen <= PEER_TIMEOUT_S] or [args.laptop_ip]
+            for ip in live:
+                sock.sendto(packet, (ip, args.telem_port))
         sys.stdout.write(f"\rseq={seq:6d} thr={throttle:4d} steer={steer:4d} bumpers={bumpers:03b} state={state}   ")
         sys.stdout.flush()
         time.sleep(0.01)

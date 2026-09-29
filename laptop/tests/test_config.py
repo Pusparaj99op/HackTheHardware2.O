@@ -6,7 +6,9 @@ from visionpilot.config import load_settings
 def test_defaults():
     settings = load_settings({})
     assert settings.net.port == 8443
-    assert settings.net.car_ip is None
+    assert settings.net.car_ip == "192.168.4.1"  # ESP32 access-point mode
+    assert settings.net.discovery_port == 4212
+    assert settings.control.override_hold_s == 1.0
     assert settings.net.tls is True
     assert settings.control.speed_cap == 40
     assert settings.follow.stop_distance_m == 0.8

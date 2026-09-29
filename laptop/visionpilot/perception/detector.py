@@ -18,7 +18,6 @@ class Detector:
 
         cuda = torch.cuda.is_available()
         self._device = 0 if cuda else "cpu"
-        self._half = cuda
         model_dir.mkdir(parents=True, exist_ok=True)
         self._model = YOLO(str(model_dir / model_name))
         self._conf = conf
@@ -35,7 +34,6 @@ class Detector:
             conf=self._conf,
             imgsz=self._imgsz,
             device=self._device,
-            half=self._half,
             verbose=False,
         )[0]
         boxes = result.boxes

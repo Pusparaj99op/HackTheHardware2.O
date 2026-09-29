@@ -25,7 +25,8 @@ class NetConfig:
     cert_dir: Path = LAPTOP_DIR / "certs"
     cmd_port: int = 4210
     telem_port: int = 4211
-    car_ip: str | None = None
+    discovery_port: int = 4212
+    car_ip: str | None = "192.168.4.1"  # ESP32 access point; VP_CAR_IP overrides
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,8 @@ class ControlConfig:
     telemetry_timeout_s: float = 0.5
     video_timeout_s: float = 0.6
     manual_timeout_s: float = 0.35
+    override_hold_s: float = 1.0  # joystick released -> vision resumes after this
+    ping_period_s: float = 0.5  # while disengaged, ping the car to receive telemetry
 
 
 @dataclass(frozen=True)
@@ -80,7 +83,7 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
     base = Settings()
     net = replace(
         base.net,
-        car_ip=env.get("VP_CAR_IP") or None,
+        car_ip=env.get("VP_CAR_IP") or base.net.car_ip,
         port=int(_number(env, "VP_PORT", base.net.port)),
         tls=env.get("VP_NO_TLS", "") not in ("1", "true", "yes"),
     )

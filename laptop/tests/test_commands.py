@@ -13,11 +13,19 @@ def control():
     return c
 
 
-def test_arm_and_kill(control):
-    assert handle_command(control, {"type": "arm"}) is None
+def test_engage_release_arm_and_kill(control):
+    assert handle_command(control, {"type": "engage"}) is None
+    assert handle_command(control, {"type": "arm"}) is None  # legacy alias
+    assert handle_command(control, {"type": "release"}) is None
     assert handle_command(control, {"type": "kill"}) is None
-    control.arm.assert_called_once()
+    assert control.engage.call_count == 2
+    control.release.assert_called_once()
     control.kill.assert_called_once()
+
+
+def test_assist_mode_accepted(control):
+    assert handle_command(control, {"type": "mode", "mode": "assist"}) is None
+    control.set_mode.assert_called_once_with(Mode.ASSIST)
 
 
 def test_mode(control):

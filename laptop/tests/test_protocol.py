@@ -4,8 +4,11 @@ from visionpilot.protocol import (
     bumper_names,
     decode_telemetry,
     encode_clear,
+    encode_discovery_reply,
     encode_drive,
     encode_kill,
+    encode_ping,
+    parse_discovery_request,
 )
 
 
@@ -21,9 +24,18 @@ def test_encode_drive_wraps_sequence_to_32_bits():
     assert encode_drive(2**32 + 5, 0, 0) == b"D,5,0,0"
 
 
-def test_kill_and_clear_packets():
+def test_kill_clear_and_ping_packets():
     assert encode_kill() == b"K"
     assert encode_clear() == b"C"
+    assert encode_ping() == b"P"
+
+
+def test_discovery_reply_roundtrip():
+    assert parse_discovery_request(b"VP?") is True
+    assert parse_discovery_request(b"VP?\n") is True
+    assert parse_discovery_request(b"hello") is False
+    assert encode_discovery_reply(8443, tls=True) == b"VPL,8443,1"
+    assert encode_discovery_reply(8000, tls=False) == b"VPL,8000,0"
 
 
 def test_decode_valid_telemetry():

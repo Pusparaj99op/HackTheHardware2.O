@@ -12,3 +12,16 @@ class ManualBehavior:
 
     def step(self, world: WorldState) -> BehaviorOutput:
         return BehaviorOutput(command=world.manual, status="manual driving")
+
+
+class AssistBehavior(ManualBehavior):
+    """ASSIST: you drive with the joysticks, vision auto-brakes before obstacles.
+
+    The braking itself is the safety arbiter's obstacle stop; this mode just
+    requires live video so the car never drives 'blind' in assist.
+    """
+
+    requires_video = True
+
+    def step(self, world: WorldState) -> BehaviorOutput:
+        return BehaviorOutput(command=world.manual, status="assist: you drive, vision brakes")

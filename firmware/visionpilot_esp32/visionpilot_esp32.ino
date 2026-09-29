@@ -1,7 +1,9 @@
 // VisionPilot car firmware — simplified: WiFi AP + L298N motor + servo only.
 // Phone -> UDP "D,<seq>,<throttle>,<steer>" -> L298N DC motor + steering servo.
 // Safety: watchdog (no packet for WATCHDOG_MS -> stop), kill latch (K/C).
-// Telemetry: "T,<lastSeq>,0,0,<state>" back to phone on port 4211.
+// Telemetry: "T,<lastSeq>,0,0,<state>" on port 4211 to every recent sender (peer):
+// the phone controller app AND the laptop vision brain both see the car state.
+// "P" = ping: registers the sender as a telemetry peer without driving the car.
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #if __has_include(<esp_arduino_version.h>)
@@ -26,10 +28,19 @@ static const int MOTOR_CH        = 0;
 static const int SERVO_CH        = 2;
 static const unsigned long SEQ_RESTART_GAP = 1000;
 
+static const uint32_t PEER_TIMEOUT_MS = 2000;
+static const int MAX_PEERS = 2;  // controller phone + laptop
+
+struct Peer {
+  IPAddress ip;
+  uint32_t lastSeenMs;
+  unsigned long lastSeq;  // each sender has its own sequence counter
+  bool used;
+};
+
 WiFiUDP udp;
 bool udpStarted  = false;
-IPAddress laptopIp;
-bool haveLaptop  = false;
+Peer peers[MAX_PEERS] = {};
 
 uint32_t lastDriveMs  = 0;
 uint32_t lastTelemMs  = 0;
@@ -108,7 +119,8 @@ void applyDrive(int throttle, int steer) {
   setSteer(steer);
 }
 
-void handlePacket(const char* msg) {
+void handlePacket(const char* msg, Peer& peer) {
+  if (msg[0] == 'P') return;  // ping: peer already refreshed, nothing to drive
   if (msg[0] == 'K') { killed = true;  stopAll(); return; }
   if (msg[0] == 'C') { killed = false; return; }
   if (msg[0] != 'D') return;
@@ -117,12 +129,30 @@ void handlePacket(const char* msg) {
   int throttle = 0, steer = 0;
   if (sscanf(msg, "D,%lu,%d,%d", &seq, &throttle, &steer) != 3) return;
 
-  const bool stale = !watchdogTripped() && seq <= lastSeq && lastSeq - seq < SEQ_RESTART_GAP;
+  // Drop late (out-of-order) packets from THIS sender while the link is live.
+  const bool stale = !watchdogTripped() && seq <= peer.lastSeq && peer.lastSeq - seq < SEQ_RESTART_GAP;
   if (stale) return;
 
+  peer.lastSeq = seq;
   lastSeq      = seq;
   lastDriveMs  = millis();
   applyDrive(constrain(throttle, -100, 100), constrain(steer, -100, 100));
+}
+
+// ---------- Peers ----------
+Peer& peerFor(const IPAddress& ip) {
+  const uint32_t now = millis();
+  int oldest = 0;
+  for (int i = 0; i < MAX_PEERS; i++) {
+    if (peers[i].used && peers[i].ip == ip) {
+      peers[i].lastSeenMs = now;
+      return peers[i];
+    }
+    if (!peers[i].used || now - peers[i].lastSeenMs > now - peers[oldest].lastSeenMs) oldest = i;
+    if (!peers[i].used) break;
+  }
+  peers[oldest] = Peer{ip, now, 0, true};  // new sender replaces the free / stalest slot
+  return peers[oldest];
 }
 
 // ---------- Loop pieces ----------
@@ -132,9 +162,7 @@ void pollUdp() {
     char buf[64];
     const int len = udp.read(buf, sizeof(buf) - 1);
     buf[len > 0 ? len : 0] = '\0';
-    laptopIp  = udp.remoteIP();
-    haveLaptop = true;
-    handlePacket(buf);
+    handlePacket(buf, peerFor(udp.remoteIP()));
     size = udp.parsePacket();
   }
 }
@@ -142,13 +170,15 @@ void pollUdp() {
 void sendTelemetry() {
   if (millis() - lastTelemMs < TELEM_INTERVAL_MS) return;
   lastTelemMs = millis();
-  const IPAddress dest = haveLaptop ? laptopIp : WiFi.softAPIP();
   char buf[64];
   // Keep 5-field format compatible with existing app: T,seq,mask,mV,state
   const int len = snprintf(buf, sizeof(buf), "T,%lu,0,0,%u", lastSeq, (unsigned)currentState());
-  udp.beginPacket(dest, TELEM_PORT);
-  udp.write((const uint8_t*)buf, len);
-  udp.endPacket();
+  for (int i = 0; i < MAX_PEERS; i++) {
+    if (!peers[i].used || millis() - peers[i].lastSeenMs > PEER_TIMEOUT_MS) continue;
+    udp.beginPacket(peers[i].ip, TELEM_PORT);
+    udp.write((const uint8_t*)buf, len);
+    udp.endPacket();
+  }
 }
 
 void updateLed() {

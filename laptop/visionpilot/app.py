@@ -24,6 +24,7 @@ from .config import LAPTOP_DIR, Settings
 from .control import ControlLoop
 from .models import STOP, Perception
 from .perception.overlay import OverlayInfo
+from .protocol import encode_discovery_reply, parse_discovery_request
 from .vision_worker import VisionWorker
 
 log = logging.getLogger(__name__)
@@ -62,6 +63,24 @@ class Hub:
             except SEND_ERRORS:
                 self.dashboards.pop(ws, None)
                 self.phones.discard(ws)
+
+
+class DiscoveryResponder(asyncio.DatagramProtocol):
+    """Answers the phone app's broadcast "VP?" so it can find this laptop's IP."""
+
+    def __init__(self, port: int, tls: bool) -> None:
+        self._reply = encode_discovery_reply(port, tls)
+        self._transport: asyncio.DatagramTransport | None = None
+
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        self._transport = transport  # type: ignore[assignment]
+
+    def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
+        if self._transport is not None and parse_discovery_request(data):
+            self._transport.sendto(self._reply, addr)
+
+    def error_received(self, exc: Exception) -> None:
+        log.debug("discovery socket error: %s", exc)
 
 
 class Runtime:
@@ -111,9 +130,10 @@ class Runtime:
         period = 1 / self.settings.control.ui_hz
         while True:
             await asyncio.sleep(period)
-            if not self.hub.dashboards and not self.hub.phones and not self.control.killed:
-                log.warning("All screens disconnected - killing car")
-                self.control.kill()
+            if self.control.engaged and not self.hub.dashboards:
+                # the camera phone alone is not a controller: nobody can press KILL any more
+                log.warning("No controller connected (app/dashboard) - releasing the car")
+                self.control.release()
             self.control.vision_status = f"{self.worker.status} | {self.worker.fps:.0f} fps"
             self.control.labels = self.worker.labels
             snapshot = self.control.snapshot()
@@ -140,6 +160,11 @@ def create_app(settings: Settings) -> FastAPI:
     async def lifespan(_: FastAPI):
         rt.loop = asyncio.get_running_loop()
         await rt.link.start()
+        discovery, _ = await rt.loop.create_datagram_endpoint(
+            lambda: DiscoveryResponder(settings.net.port, settings.net.tls),
+            local_addr=("0.0.0.0", settings.net.discovery_port),
+            allow_broadcast=True,
+        )
         rt.worker.start()
         tasks = [asyncio.create_task(rt.control_task()), asyncio.create_task(rt.ui_task())]
         try:
@@ -147,8 +172,9 @@ def create_app(settings: Settings) -> FastAPI:
         finally:
             for task in tasks:
                 task.cancel()
-            rt.link.send_drive(STOP)
+            rt.control.release()  # one STOP if we were driving; silent otherwise
             rt.worker.stop()
+            discovery.close()
             rt.link.close()
 
     app = FastAPI(title="VisionPilot", lifespan=lifespan)

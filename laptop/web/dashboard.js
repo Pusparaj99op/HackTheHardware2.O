@@ -76,8 +76,8 @@ function renderTracks(names) {
 function render(s) {
   state = s;
   const kill = $("kill");
-  kill.textContent = s.killed ? "ARM (car is killed)" : "KILL  [Space]";
-  kill.classList.toggle("armed-off", s.killed);
+  kill.textContent = s.engaged ? "KILL  [Space]" : "ENGAGE (laptop drives)";
+  kill.classList.toggle("armed-off", !s.engaged);
   $("status").textContent = s.status;
   $("safety").textContent = s.safety ? `SAFETY STOP: ${s.safety}` : "";
   $("notice").textContent = s.notice;
@@ -97,7 +97,7 @@ function render(s) {
 }
 
 // ---------------------------------------------------------------- controls
-$("kill").addEventListener("click", () => sock.send({ type: state && !state.killed ? "kill" : "arm" }));
+$("kill").addEventListener("click", () => sock.send({ type: state && state.engaged ? "kill" : "engage" }));
 $("label").addEventListener("change", (e) => sock.send({ type: "target_class", label: e.target.value || null }));
 $("clear-target").addEventListener("click", () => sock.send({ type: "clear_target" }));
 $("cap").addEventListener("input", (e) => ($("cap-value").textContent = `${e.target.value}%`));

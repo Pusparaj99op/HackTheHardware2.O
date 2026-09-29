@@ -2,6 +2,7 @@
 
 export const MODES = [
   ["manual", "Manual"],
+  ["assist", "Assist"],
   ["follow", "Follow"],
   ["explore", "Explore"],
   ["replay", "Replay"],

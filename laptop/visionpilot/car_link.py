@@ -12,7 +12,7 @@ import time
 from collections.abc import Callable
 
 from .models import DriveCommand
-from .protocol import Telemetry, decode_telemetry, encode_clear, encode_drive, encode_kill
+from .protocol import Telemetry, decode_telemetry, encode_clear, encode_drive, encode_kill, encode_ping
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +87,9 @@ class CarLink(asyncio.DatagramProtocol):
 
     def send_clear(self) -> None:
         self._send(encode_clear())
+
+    def send_ping(self) -> None:
+        self._send(encode_ping())
 
     def close(self) -> None:
         if self._transport is not None:

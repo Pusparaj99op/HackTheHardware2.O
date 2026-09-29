@@ -84,7 +84,7 @@ select, input[type="text"] {
 .video-wrap .placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); text-align: center; padding: 20px; }
 .status-line { font-size: 18px; font-weight: 600; }
 .safety { color: var(--danger); font-weight: 700; }
-.modes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .modes button { padding: 10px 4px; font-size: 13px; }
 #map { width: 100%; aspect-ratio: 1 / 1; background: #080a0c; border-radius: 10px; border: 1px solid var(--line); display: block; }
 .pad {
@@ -106,7 +106,7 @@ kbd { background: var(--panel-2); border: 1px solid var(--line); border-radius: 
 .phone .stage { position: relative; flex: 1; background: #000; overflow: hidden; }
 .phone video, .phone canvas.overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .phone .bottom { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); display: grid; gap: 8px; background: rgba(11, 13, 16, .92); }
-.phone .modes { grid-template-columns: repeat(5, 1fr); }
+.phone .modes { grid-template-columns: repeat(6, 1fr); }
 .phone .start {
   position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .8); z-index: 5; text-align: center; padding: 24px;
 }

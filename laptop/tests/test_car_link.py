@@ -55,11 +55,14 @@ def test_roundtrip_over_localhost_udp():
             assert link.car_ip == "127.0.0.1"
             link.send_drive(DriveCommand(throttle=30, steer=-10))
             link.send_kill()
+            link.send_ping()
             loop = asyncio.get_running_loop()
             first = await asyncio.wait_for(loop.sock_recv(car, 64), 1)
             second = await asyncio.wait_for(loop.sock_recv(car, 64), 1)
+            third = await asyncio.wait_for(loop.sock_recv(car, 64), 1)
             assert first == b"D,1,30,-10"
             assert second == b"K"
+            assert third == b"P"
         finally:
             link.close()
             car.close()

@@ -141,8 +141,8 @@ function render(s) {
   state = s;
   $("status").textContent = s.safety ? `STOP: ${s.safety} | ${s.status}` : s.status;
   const kill = $("kill");
-  kill.textContent = s.killed ? "ARM (car is killed)" : "KILL";
-  kill.classList.toggle("armed-off", s.killed);
+  kill.textContent = s.engaged ? "KILL" : "ENGAGE (laptop drives)";
+  kill.classList.toggle("armed-off", !s.engaged);
   setModes(s.mode);
   syncLabels($("label"), s.labels);
   if (document.activeElement !== $("label")) $("label").value = s.target.label ?? "";
@@ -154,6 +154,6 @@ $("stage").addEventListener("click", (event) => {
   const point = toImageCoords(event, video, video.videoWidth, video.videoHeight);
   if (point) sock.send({ type: "tap", x: point.x, y: point.y });
 });
-$("kill").addEventListener("click", () => sock.send({ type: state && !state.killed ? "kill" : "arm" }));
+$("kill").addEventListener("click", () => sock.send({ type: state && state.engaged ? "kill" : "engage" }));
 $("label").addEventListener("change", (e) => sock.send({ type: "target_class", label: e.target.value || null }));
 $("clear").addEventListener("click", () => sock.send({ type: "clear_target" }));

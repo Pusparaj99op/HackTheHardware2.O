@@ -45,6 +45,23 @@ def encode_clear() -> bytes:
     return b"C"
 
 
+def encode_ping() -> bytes:
+    """Keeps us on the car's telemetry list without driving it."""
+    return b"P"
+
+
+# ---- LAN discovery: the phone app broadcasts "VP?" and the laptop answers ----
+DISCOVERY_REQUEST = b"VP?"
+
+
+def parse_discovery_request(data: bytes) -> bool:
+    return data.strip() == DISCOVERY_REQUEST
+
+
+def encode_discovery_reply(port: int, tls: bool) -> bytes:
+    return f"VPL,{port},{1 if tls else 0}".encode("ascii")
+
+
 def decode_telemetry(data: bytes) -> Telemetry | None:
     """Parse a telemetry packet; returns None for anything malformed."""
     try:
